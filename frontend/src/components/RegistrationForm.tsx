@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import axios from 'axios';
 import { Send, CheckCircle, Info } from 'lucide-react';
 
@@ -28,7 +28,7 @@ export default function RegistrationForm({ apiBase }: Props) {
     observations: ''
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {

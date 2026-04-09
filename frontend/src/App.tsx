@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, MouseEvent } from 'react';
 import axios from 'axios';
 import RegistrationForm from './components/RegistrationForm';
 import AdminDashboard from './components/AdminDashboard';
@@ -36,7 +36,7 @@ export default function App() {
     }
   }, [authStatus]);
 
-  const toggleAdmin = (e: React.MouseEvent) => {
+  const toggleAdmin = (e: MouseEvent) => {
     e.preventDefault();
     if (view === 'public') {
       setView('admin-login');
