@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
@@ -20,6 +21,9 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Serve static files from the React app
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 initDB();
 
@@ -154,6 +158,12 @@ app.delete('/api/admin/registrations/:id', isAdmin, async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete registration' });
     }
+});
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 app.listen(PORT, () => {
