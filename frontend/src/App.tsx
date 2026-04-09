@@ -5,7 +5,7 @@ import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
 
 axios.defaults.withCredentials = true;
-const API_BASE = 'http://localhost:8080';
+const API_BASE = import.meta.env.MODE === 'development' ? 'http://localhost:8080' : '';
 
 import { Shield, Home } from 'lucide-react';
 
