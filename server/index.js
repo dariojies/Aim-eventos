@@ -12,7 +12,8 @@ const { pool, initDB } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+const FRONTEND_URL = process.env.FRONTEND_URL || '';
+app.use(cors({ origin: FRONTEND_URL || true, credentials: true }));
 app.use(express.json());
 app.use(session({
     secret: process.env.SESSION_SECRET || 'secret',
@@ -59,8 +60,8 @@ passport.deserializeUser((user, done) => done(null, user));
 
 // Auth Routes
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: process.env.FRONTEND_URL }), (req, res) => {
-    res.redirect(`${process.env.FRONTEND_URL}/admin`);
+app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: FRONTEND_URL || '/' }), (req, res) => {
+    res.redirect(`${FRONTEND_URL || ''}/admin`);
 });
 
 app.get('/api/auth/status', (req, res) => {
@@ -165,7 +166,8 @@ app.delete('/api/admin/registrations/:id', isAdmin, async (req, res) => {
 // The "catchall" handler: for any request that doesn't
 // match one above, send back React's index.html file.
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+    const indexPath = path.join(__dirname, '../frontend/dist/index.html');
+    res.sendFile(indexPath);
 });
 
 console.log(`Attempting to listen on port ${PORT}...`);
