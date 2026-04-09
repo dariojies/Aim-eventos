@@ -2,7 +2,10 @@
   "name": "race-manager",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server/index.js",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "start": "node server/index.js",
     "heroku-postbuild": "cd frontend && npm install && npm run build",

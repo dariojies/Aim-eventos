@@ -1,4 +1,6 @@
+console.log('--- STARTING SERVER ---');
 require('dotenv').config();
+console.log('Dotenv loaded');
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
@@ -166,6 +168,7 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
+console.log(`Attempting to listen on port ${PORT}...`);
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
