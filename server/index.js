@@ -47,10 +47,12 @@ passport.use(new GoogleStrategy({
     callbackURL: "/auth/google/callback",
     proxy: true
 }, (accessToken, refreshToken, profile, done) => {
-    const email = profile.emails[0].value;
+    const email = profile.emails[0].value.toLowerCase();
     const domain = email.split('@')[1];
+    const allowedDomain = (process.env.AUTH_DOMAIN || '').toLowerCase();
+    const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
 
-    if (domain === process.env.AUTH_DOMAIN || email === process.env.ADMIN_EMAIL) {
+    if (domain === allowedDomain || email === adminEmail) {
         return done(null, profile);
     } else {
         return done(null, false, { message: 'Unauthorized domain' });
