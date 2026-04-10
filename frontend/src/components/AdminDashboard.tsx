@@ -11,6 +11,13 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ totalParticipants: 0, totalShirts: 0 });
+  const [filters, setFilters] = useState({ type: 'all', course: 'all' });
+
+  const COURSES = [
+    '3 años A', '3 años B', '4 años A', '4 años B', '5 años A', '5 años B',
+    '1º EPO A', '1º EPO B', '2º EPO A', '2º EPO B', '3º EPO A', '3º EPO B', '4º EPO A', '4º EPO B', '5º EPO A', '5º EPO B', '6º EPO A', '6º EPO B',
+    '1º ESO A', '1º ESO B', '2º ESO A', '2º ESO B', '3º ESO A', '3º ESO B', '4º ESO A', '4º ESO B'
+  ];
 
   const fetchData = async () => {
     setLoading(true);
@@ -47,6 +54,20 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
     }
   };
 
+  const handleResetDorsales = async () => {
+    if (!confirm('¿Estás seguro de que quieres borrar TODOS los dorsales asignados? Esta acción es irreversible.')) return;
+    setLoading(true);
+    try {
+      await axios.post(`${apiBase}/api/admin/reset-dorsales`);
+      await fetchData();
+      alert('Dorsales borrados correctamente.');
+    } catch (err) {
+      alert('Error al borrar dorsales.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar esta inscripción?')) return;
     try {
@@ -67,21 +88,42 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
     const rows = data.map(r => [
       r.type,
       r.course || '-',
-      r.full_name,
+      `"${r.full_name.replace(/"/g, '""')}"`,
       r.dorsal_start ? `${r.dorsal_start}${r.dorsal_end > r.dorsal_start ? '-' + r.dorsal_end : ''}` : '-',
       r.ampa_members,
       r.total_participants,
       r.shirt_4y, r.shirt_8y, r.shirt_12y, r.shirt_16y, r.shirt_s, r.shirt_m, r.shirt_l, r.shirt_xl, r.shirt_xxl,
-      r.observations || ''
+      `"${(r.observations || "").replace(/"/g, '""')}"`
     ]);
     
-    let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", url);
     link.setAttribute("download", `marcha_solidaria_${new Date().toLocaleDateString()}.csv`);
     document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+  };
+
+  const filteredData = data.filter(reg => {
+    if (filters.type !== 'all' && reg.type !== filters.type) return false;
+    if (filters.type === 'alumno' && filters.course !== 'all' && reg.course !== filters.course) return false;
+    return true;
+  });
+
+  const getShirtsLabel = (reg: any) => {
+    if (!reg.wants_shirts) return 'No';
+    const sizes = [
+      { k: '4y', v: reg.shirt_4y }, { k: '8y', v: reg.shirt_8y }, 
+      { k: '12y', v: reg.shirt_12y }, { k: '16y', v: reg.shirt_16y },
+      { k: 'S', v: reg.shirt_s }, { k: 'M', v: reg.shirt_m }, 
+      { k: 'L', v: reg.shirt_l }, { k: 'XL', v: reg.shirt_xl }, 
+      { k: 'XXL', v: reg.shirt_xxl }
+    ];
+    const items = sizes.filter(s => s.v > 0).map(s => `${s.k}: ${s.v}`);
+    return items.length > 0 ? items.join(', ') : '0 ud.';
   };
 
   return (
@@ -92,6 +134,9 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           <p style={{ color: 'var(--text-dim)' }}>Gestión de inscripciones y dorsales</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn glass" onClick={handleResetDorsales} disabled={loading} style={{ color: '#f59e0b' }}>
+            <Trash2 size={18} /> Borrar Dorsales
+          </button>
           <button className="btn btn-primary" onClick={handleGenerateDorsales} disabled={loading}>
             <Ticket size={18} /> {loading ? 'Generando...' : 'Generar Dorsales'}
           </button>
@@ -103,6 +148,33 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           </button>
         </div>
       </header>
+
+      <div style={{ display: 'flex', gap: 15, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div className="input-group" style={{ marginBottom: 0, width: '200px' }}>
+          <select 
+            value={filters.type} 
+            onChange={e => setFilters({ ...filters, type: e.target.value, course: 'all' })}
+            style={{ padding: '8px 12px' }}
+          >
+            <option value="all">Todos los tipos</option>
+            <option value="alumno">Alumnos</option>
+            <option value="profesor">Profesores</option>
+            <option value="externo">Externos</option>
+          </select>
+        </div>
+        {filters.type === 'alumno' && (
+          <div className="input-group" style={{ marginBottom: 0, width: '200px' }}>
+            <select 
+              value={filters.course} 
+              onChange={e => setFilters({ ...filters, course: e.target.value })}
+              style={{ padding: '8px 12px' }}
+            >
+              <option value="all">Todos los cursos</option>
+              {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 30, gap: 20 }}>
         <div className="glass" style={{ padding: 25, textAlign: 'center' }}>
@@ -135,7 +207,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
             </tr>
           </thead>
           <tbody>
-            {data.map(reg => (
+            {filteredData.map(reg => (
               <tr key={reg.id}>
                 <td>
                   <span className={`badge badge-${reg.type}`}>
@@ -151,10 +223,8 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
                     </span>
                   ) : '-'}
                 </td>
-                <td style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
-                  {!reg.wants_shirts ? 'No' : (
-                    reg.shirt_4y + reg.shirt_8y + reg.shirt_12y + reg.shirt_16y + reg.shirt_s + reg.shirt_m + reg.shirt_l + reg.shirt_xl + reg.shirt_xxl + ' ud.'
-                  )}
+                <td style={{ fontSize: '0.8rem', color: 'var(--text-dim)', maxWidth: '200px' }}>
+                   {getShirtsLabel(reg)}
                 </td>
                 <td style={{ textAlign: 'center' }}>
                    <span style={{ color: 'var(--accent)' }}>{reg.ampa_members}</span> / {reg.total_participants}

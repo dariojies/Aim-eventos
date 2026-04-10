@@ -158,6 +158,16 @@ app.post('/api/admin/generate-dorsales', isAdmin, async (req, res) => {
     }
 });
 
+app.post('/api/admin/reset-dorsales', isAdmin, async (req, res) => {
+    try {
+        await pool.query('UPDATE race_registrations SET dorsal_start = NULL, dorsal_end = NULL');
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to reset dorsales' });
+    }
+});
+
 app.delete('/api/admin/registrations/:id', isAdmin, async (req, res) => {
     try {
         await pool.query('DELETE FROM race_registrations WHERE id = $1', [req.params.id]);
