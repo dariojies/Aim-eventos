@@ -10,6 +10,7 @@ const session = require('express-session');
 const { pool, initDB } = require('./db');
 
 const app = express();
+app.set('trust proxy', 1); // Trust Heroku proxy
 const PORT = process.env.PORT || 8080;
 
 const FRONTEND_URL = process.env.FRONTEND_URL || '';
@@ -43,7 +44,8 @@ const COURSE_ORDER = [
 passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID || 'dummy',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy',
-    callbackURL: "/auth/google/callback"
+    callbackURL: "/auth/google/callback",
+    proxy: true
 }, (accessToken, refreshToken, profile, done) => {
     const email = profile.emails[0].value;
     const domain = email.split('@')[1];
