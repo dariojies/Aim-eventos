@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Users, Ticket, Download, Trash2, LogOut } from 'lucide-react';
+import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet } from 'lucide-react';
 
 interface Props {
   apiBase: string;
@@ -173,7 +173,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
 
   const filteredData = data.filter(reg => {
     if (filters.type !== 'all' && reg.type !== filters.type) return false;
-    if (filters.type === 'alumno' && filters.course !== 'all' && reg.course !== filters.course) return false;
+    if (filters.course !== 'all' && reg.course !== filters.course) return false;
     return true;
   });
 
@@ -274,10 +274,11 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
       {userRole === 'superadmin' && (
         <div style={{ display: 'flex', gap: 15, marginBottom: 20, flexWrap: 'wrap' }}>
           <div className="input-group" style={{ marginBottom: 0, width: '200px' }}>
+            <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: 5, display: 'block' }}>Filtrar por Tipo</label>
             <select 
               value={filters.type} 
-              onChange={e => setFilters({ ...filters, type: e.target.value, course: 'all' })}
-              style={{ padding: '8px 12px' }}
+              onChange={e => setFilters({ ...filters, type: e.target.value })}
+              style={{ padding: '8px 12px', width: '100%' }}
             >
               <option value="all">Todos los tipos</option>
               <option value="alumno">Alumnos</option>
@@ -285,39 +286,40 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
               <option value="externo">Externos</option>
             </select>
           </div>
-          {filters.type === 'alumno' && (
-            <div className="input-group" style={{ marginBottom: 0, width: '200px' }}>
-              <select 
-                value={filters.course} 
-                onChange={e => setFilters({ ...filters, course: e.target.value })}
-                style={{ padding: '8px 12px' }}
-              >
-                <option value="all">Todos los cursos</option>
-                {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          )}
+          <div className="input-group" style={{ marginBottom: 0, width: '200px' }}>
+            <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: 5, display: 'block' }}>Filtrar por Curso</label>
+            <select 
+              value={filters.course} 
+              onChange={e => setFilters({ ...filters, course: e.target.value })}
+              style={{ padding: '8px 12px', width: '100%' }}
+            >
+              <option value="all">Todos los cursos</option>
+              {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
         </div>
       )}
 
       <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 30, gap: 20 }}>
-        <div className="glass" style={{ padding: 25, textAlign: 'center' }}>
+        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <Users size={24} color="var(--primary)" style={{ marginBottom: 10 }} />
           <div style={{ fontSize: '2rem', fontWeight: 700 }}>{stats.totalParticipants}</div>
-          <label>Participantes</label>
+          <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Participantes</label>
         </div>
-        <div className="glass" style={{ padding: 25, textAlign: 'center' }}>
+        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <Download size={24} color="var(--secondary)" style={{ marginBottom: 10 }} />
           <div style={{ fontSize: '2rem', fontWeight: 700 }}>{stats.totalShirts}</div>
-          <label>Camisetas</label>
+          <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Camisetas</label>
         </div>
-        <div className="glass" style={{ padding: 25, textAlign: 'center' }}>
+        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <Euro size={24} color="var(--accent)" style={{ marginBottom: 10 }} />
           <div style={{ color: 'var(--accent)', fontSize: '2rem', fontWeight: 700 }}>{stats.totalDue}€</div>
-          <label>Importe Total</label>
+          <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Importe Total</label>
         </div>
-        <div className="glass" style={{ padding: 25, textAlign: 'center' }}>
+        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <Wallet size={24} color="#10b981" style={{ marginBottom: 10 }} />
           <div style={{ color: '#10b981', fontSize: '2rem', fontWeight: 700 }}>{stats.totalPaid}€</div>
-          <label>Recaudado</label>
+          <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Recaudado</label>
         </div>
       </div>
 
