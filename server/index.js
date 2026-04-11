@@ -9,6 +9,8 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const session = require('express-session');
 const { pool, initDB } = require('./db');
 
+const SUPER_ADMINS = ['jmmarinborrego@gmail.com', 'dario.jimenez@cevhuertadelacruzesur.es'];
+
 const app = express();
 app.set('trust proxy', 1); // Trust Heroku proxy
 const PORT = process.env.PORT || 8080;
@@ -68,9 +70,25 @@ app.get('/auth/google/callback', passport.authenticate('google', { failureRedire
     res.redirect(`${FRONTEND_URL || ''}/admin`);
 });
 
-app.get('/api/auth/status', (req, res) => {
+app.get('/api/auth/status', async (req, res) => {
     if (req.isAuthenticated()) {
-        res.json({ authenticated: true, user: req.user });
+        const email = req.user.emails[0].value.toLowerCase();
+        const isSuper = SUPER_ADMINS.includes(email);
+        
+        let assignedCourse = null;
+        if (!isSuper) {
+            const result = await pool.query('SELECT assigned_course FROM teacher_assignments WHERE email = $1', [email]);
+            if (result.rows.length > 0) {
+                assignedCourse = result.rows[0].assigned_course;
+            }
+        }
+
+        res.json({ 
+            authenticated: true, 
+            user: req.user,
+            role: isSuper ? 'superadmin' : 'teacher',
+            assignedCourse
+        });
     } else {
         res.json({ authenticated: false });
     }
@@ -84,9 +102,23 @@ app.get('/api/auth/logout', (req, res) => {
 });
 
 // Admin Middleware
-const isAdmin = (req, res, next) => {
-    if (req.isAuthenticated()) return next();
-    res.status(401).json({ error: 'Unauthorized' });
+const isAdmin = async (req, res, next) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
+    
+    const email = req.user.emails[0].value.toLowerCase();
+    if (SUPER_ADMINS.includes(email)) {
+        req.userRole = 'superadmin';
+        return next();
+    }
+
+    const result = await pool.query('SELECT assigned_course FROM teacher_assignments WHERE email = $1', [email]);
+    if (result.rows.length > 0) {
+        req.userRole = 'teacher';
+        req.assignedCourse = result.rows[0].assigned_course;
+        return next();
+    }
+
+    res.status(403).json({ error: 'Forbidden: No assignment found' });
 };
 
 // Public Routes
@@ -118,7 +150,16 @@ app.post('/api/register', async (req, res) => {
 // Admin Routes
 app.get('/api/admin/registrations', isAdmin, async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM race_registrations ORDER BY registration_date DESC');
+        let query = 'SELECT * FROM race_registrations';
+        let values = [];
+
+        if (req.userRole === 'teacher') {
+            query += ' WHERE course = $1';
+            values.push(req.assignedCourse);
+        }
+
+        query += ' ORDER BY registration_date DESC';
+        const result = await pool.query(query, values);
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch registrations' });
@@ -159,6 +200,7 @@ app.post('/api/admin/generate-dorsales', isAdmin, async (req, res) => {
 });
 
 app.post('/api/admin/reset-dorsales', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
     try {
         await pool.query('UPDATE race_registrations SET dorsal_start = NULL, dorsal_end = NULL');
         res.json({ success: true });
@@ -168,12 +210,65 @@ app.post('/api/admin/reset-dorsales', isAdmin, async (req, res) => {
     }
 });
 
+app.post('/api/admin/registrations/:id/toggle-paid', isAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        // Teachers can only toggle paid for their assigned course
+        if (req.userRole === 'teacher') {
+            const check = await pool.query('SELECT course FROM race_registrations WHERE id = $1', [id]);
+            if (check.rows.length === 0 || check.rows[0].course !== req.assignedCourse) {
+                return res.status(403).json({ error: 'Unauthorized' });
+            }
+        }
+        await pool.query('UPDATE race_registrations SET is_paid = NOT is_paid WHERE id = $1', [id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update payment status' });
+    }
+});
+
 app.delete('/api/admin/registrations/:id', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
     try {
         await pool.query('DELETE FROM race_registrations WHERE id = $1', [req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete registration' });
+    }
+});
+
+// Assignment routes (Super Admin Only)
+app.get('/api/admin/assignments', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Unauthorized' });
+    try {
+        const result = await pool.query('SELECT * FROM teacher_assignments ORDER BY email ASC');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch assignments' });
+    }
+});
+
+app.post('/api/admin/assignments', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Unauthorized' });
+    const { email, course } = req.body;
+    try {
+        await pool.query(
+            'INSERT INTO teacher_assignments (email, assigned_course) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET assigned_course = EXCLUDED.assigned_course',
+            [email.toLowerCase(), course]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to save assignment' });
+    }
+});
+
+app.delete('/api/admin/assignments/:email', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Unauthorized' });
+    try {
+        await pool.query('DELETE FROM teacher_assignments WHERE email = $1', [req.params.email.toLowerCase()]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete assignment' });
     }
 });
 

@@ -28,8 +28,22 @@ const initDB = async () => {
       observations TEXT,
       dorsal_start INTEGER,
       dorsal_end INTEGER,
-      registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      is_paid BOOLEAN DEFAULT false
     );
+
+    CREATE TABLE IF NOT EXISTS teacher_assignments (
+      email VARCHAR(255) PRIMARY KEY,
+      assigned_course VARCHAR(100) NOT NULL
+    );
+
+    -- Ensure is_paid exists for existing databases
+    DO $$ 
+    BEGIN 
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_registrations' AND column_name='is_paid') THEN
+        ALTER TABLE race_registrations ADD COLUMN is_paid BOOLEAN DEFAULT false;
+      END IF;
+    END $$;
   `;
   try {
     await pool.query(queryText);
