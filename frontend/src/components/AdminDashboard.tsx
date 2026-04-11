@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Users, Ticket, Download, Trash2, LogOut, RefreshCw } from 'lucide-react';
+import { Users, Ticket, Download, Trash2, LogOut } from 'lucide-react';
 
 interface Props {
   apiBase: string;
