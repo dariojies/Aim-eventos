@@ -10,8 +10,7 @@ const session = require('express-session');
 const { pool, initDB } = require('./db');
 const pgSession = require('connect-pg-simple')(session);
 
-// Initialize DB as soon as possible
-initDB();
+
 
 const SUPER_ADMINS = ['jmmarinborrego@gmail.com', 'dario.jimenez@cevhuertadelacruzesur.es'];
 
@@ -398,7 +397,18 @@ app.get('*', (req, res) => {
     res.sendFile(indexPath);
 });
 
-console.log(`Attempting to listen on port ${PORT}...`);
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// Start server after DB initialization
+const startServer = async () => {
+    try {
+        await initDB();
+        console.log('Database initialized. Starting server...');
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+    } catch (err) {
+        console.error('Failed to start server:', err);
+        process.exit(1);
+    }
+};
+
+startServer();

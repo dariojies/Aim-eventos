@@ -18,7 +18,8 @@ const initDB = async () => {
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_economic_records') THEN
           EXECUTE 'SELECT count(*) FROM race_economic_records' INTO row_count;
           IF row_count = 0 THEN
-            EXECUTE 'INSERT INTO race_economic_records SELECT * FROM economic_records';
+            -- Explicit column mapping
+            EXECUTE 'INSERT INTO race_economic_records (course, amount, payment_date, observations) SELECT course, amount, payment_date, observations FROM economic_records';
             EXECUTE 'DROP TABLE economic_records';
           END IF;
         ELSE
@@ -31,11 +32,20 @@ const initDB = async () => {
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_teacher_assignments') THEN
           EXECUTE 'SELECT count(*) FROM race_teacher_assignments' INTO row_count;
           IF row_count = 0 THEN
-            EXECUTE 'INSERT INTO race_teacher_assignments SELECT * FROM teacher_assignments';
+            -- Handle rename from 'course' to 'assigned_course' during transfer
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'teacher_assignments' AND column_name = 'course') THEN
+              EXECUTE 'INSERT INTO race_teacher_assignments (email, assigned_course) SELECT email, course FROM teacher_assignments';
+            ELSE
+              EXECUTE 'INSERT INTO race_teacher_assignments (email, assigned_course) SELECT email, assigned_course FROM teacher_assignments';
+            END IF;
             EXECUTE 'DROP TABLE teacher_assignments';
           END IF;
         ELSE
           ALTER TABLE teacher_assignments RENAME TO race_teacher_assignments;
+          -- Also rename the column if it was 'course'
+          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'race_teacher_assignments' AND column_name = 'course') THEN
+            EXECUTE 'ALTER TABLE race_teacher_assignments RENAME COLUMN course TO assigned_course';
+          END IF;
         END IF;
       END IF;
 
@@ -44,7 +54,7 @@ const initDB = async () => {
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_admin_assignments') THEN
           EXECUTE 'SELECT count(*) FROM race_admin_assignments' INTO row_count;
           IF row_count = 0 THEN
-            EXECUTE 'INSERT INTO race_admin_assignments SELECT * FROM admin_assignments';
+            EXECUTE 'INSERT INTO race_admin_assignments (email) SELECT email FROM admin_assignments';
             EXECUTE 'DROP TABLE admin_assignments';
           END IF;
         ELSE
@@ -57,7 +67,7 @@ const initDB = async () => {
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_sessions') THEN
           EXECUTE 'SELECT count(*) FROM race_sessions' INTO row_count;
           IF row_count = 0 THEN
-            EXECUTE 'INSERT INTO race_sessions SELECT * FROM session';
+            EXECUTE 'INSERT INTO race_sessions (sid, sess, expire) SELECT sid, sess, expire FROM session';
             EXECUTE 'DROP TABLE session';
           END IF;
         ELSE
