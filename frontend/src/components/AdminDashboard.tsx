@@ -370,6 +370,11 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
             {stats.breakdown.registrations}€ Insc. + {stats.breakdown.shirts}€ Camis. + {stats.breakdown.ampa}€ AMPA
           </div>
         </div>
+        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid #f59e0b' }}>
+          <Users size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
+          <div style={{ color: '#f59e0b', fontSize: '2rem', fontWeight: 800 }}>{stats.totalAmpaDebt}€</div>
+          <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Deuda AMPA</label>
+        </div>
         <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid #10b981' }}>
           <Wallet size={24} color="#10b981" style={{ marginBottom: 10 }} />
           <div style={{ color: '#10b981', fontSize: '2rem', fontWeight: 800 }}>{stats.totalPaid}€</div>
