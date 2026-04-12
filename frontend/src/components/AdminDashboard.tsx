@@ -10,7 +10,14 @@ interface Props {
 export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ totalParticipants: 0, totalShirts: 0, totalDue: 0, totalPaid: 0, totalAmpaDebt: 0 });
+  const [stats, setStats] = useState({ 
+    totalParticipants: 0, 
+    totalShirts: 0, 
+    totalDue: 0, 
+    totalPaid: 0, 
+    totalAmpaDebt: 0,
+    breakdown: { registrations: 0, shirts: 0, ampa: 0 }
+  });
   const [filters, setFilters] = useState({ type: 'all', course: 'all' });
   const [userRole, setUserRole] = useState<'superadmin' | 'teacher' | null>(null);
   const [assignedCourse, setAssignedCourse] = useState<string | null>(null);
@@ -53,23 +60,35 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
       }, 0);
 
       const ampaDebt = res.data.reduce((acc: number, curr: any) => acc + (curr.ampa_members * 3), 0);
+      const ampaPaid = econRes.data.filter((r: any) => r.course === 'AMPA').reduce((acc: number, curr: any) => acc + parseFloat(curr.amount), 0);
 
       const computed = res.data.reduce((acc: any, curr: any) => {
-        const amount = (curr.total_participants - curr.ampa_members) * 3 + 
-                      (curr.shirt_4y + curr.shirt_8y + curr.shirt_12y + curr.shirt_16y + 
-                       curr.shirt_s + curr.shirt_m + curr.shirt_l + curr.shirt_xl + curr.shirt_xxl) * 7;
+        const regAmount = (curr.total_participants - curr.ampa_members) * 3;
+        const shirtsCount = curr.shirt_4y + curr.shirt_8y + curr.shirt_12y + curr.shirt_16y + 
+                           curr.shirt_s + curr.shirt_m + curr.shirt_l + curr.shirt_xl + curr.shirt_xxl;
+        const shirtAmount = shirtsCount * 7;
+        const total = regAmount + shirtAmount;
+
         return {
-          due: acc.due + amount,
-          paid: acc.paid + (curr.is_paid ? amount : 0)
+          registrations: acc.registrations + regAmount,
+          shirts: acc.shirts + shirtAmount,
+          ampa: acc.ampa + (curr.ampa_members * 3),
+          due: acc.due + total + (curr.ampa_members * 3),
+          paid: acc.paid + (curr.is_paid ? total : 0)
         };
-      }, { due: 0, paid: 0 });
+      }, { registrations: 0, shirts: 0, ampa: 0, due: 0, paid: 0 });
 
       setStats({ 
         totalParticipants: totalP, 
         totalShirts: totalS, 
         totalDue: computed.due, 
-        totalPaid: computed.paid,
-        totalAmpaDebt: ampaDebt
+        totalPaid: computed.paid + ampaPaid,
+        totalAmpaDebt: ampaDebt,
+        breakdown: {
+          registrations: computed.registrations,
+          shirts: computed.shirts,
+          ampa: computed.ampa
+        }
       });
     } catch (err) {
       console.error(err);
@@ -344,20 +363,17 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           <div style={{ fontSize: '2rem', fontWeight: 700 }}>{stats.totalParticipants}</div>
           <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Participantes</label>
         </div>
-        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid var(--accent)' }}>
           <Euro size={24} color="var(--accent)" style={{ marginBottom: 10 }} />
-          <div style={{ color: 'var(--accent)', fontSize: '2rem', fontWeight: 700 }}>{stats.totalDue}€</div>
-          <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Importe Total</label>
+          <div style={{ color: 'var(--accent)', fontSize: '2rem', fontWeight: 800 }}>{stats.totalDue}€</div>
+          <div style={{ fontSize: '0.7rem', opacity: 0.7, marginTop: 5 }}>
+            {stats.breakdown.registrations}€ Insc. + {stats.breakdown.shirts}€ Camis. + {stats.breakdown.ampa}€ AMPA
+          </div>
         </div>
-        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <Users size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
-          <div style={{ color: '#f59e0b', fontSize: '2rem', fontWeight: 700 }}>{stats.totalAmpaDebt}€</div>
-          <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Deuda AMPA</label>
-        </div>
-        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid #10b981' }}>
           <Wallet size={24} color="#10b981" style={{ marginBottom: 10 }} />
-          <div style={{ color: '#10b981', fontSize: '2rem', fontWeight: 700 }}>{stats.totalPaid}€</div>
-          <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Recaudado</label>
+          <div style={{ color: '#10b981', fontSize: '2rem', fontWeight: 800 }}>{stats.totalPaid}€</div>
+          <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Total Recaudado</label>
         </div>
       </div>
 
@@ -417,6 +433,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
                     {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
                     <option value="Profesores">Profesores</option>
                     <option value="Externos">Externos</option>
+                    <option value="AMPA">Pago AMPA (Global)</option>
                   </select>
                 </div>
               )}
