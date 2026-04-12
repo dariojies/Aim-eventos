@@ -62,6 +62,8 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
       const ampaDebt = res.data.reduce((acc: number, curr: any) => acc + (curr.ampa_members * 3), 0);
       const ampaPaid = econRes.data.filter((r: any) => r.course === 'AMPA').reduce((acc: number, curr: any) => acc + parseFloat(curr.amount), 0);
 
+      const role = authRes.data.role;
+
       const computed = res.data.reduce((acc: any, curr: any) => {
         const regAmount = (curr.total_participants - curr.ampa_members) * 3;
         const shirtsCount = curr.shirt_4y + curr.shirt_8y + curr.shirt_12y + curr.shirt_16y + 
@@ -73,7 +75,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           registrations: acc.registrations + regAmount,
           shirts: acc.shirts + shirtAmount,
           ampa: acc.ampa + (curr.ampa_members * 3),
-          due: acc.due + total + (userRole === 'superadmin' ? (curr.ampa_members * 3) : 0),
+          due: acc.due + total + (role === 'superadmin' ? (curr.ampa_members * 3) : 0),
           paid: acc.paid + (curr.is_paid ? total : 0)
         };
       }, { registrations: 0, shirts: 0, ampa: 0, due: 0, paid: 0 });
@@ -82,7 +84,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         totalParticipants: totalP, 
         totalShirts: totalS, 
         totalDue: computed.due, 
-        totalPaid: computed.paid + (userRole === 'superadmin' ? ampaPaid : 0),
+        totalPaid: computed.paid + (role === 'superadmin' ? ampaPaid : 0),
         totalAmpaDebt: ampaDebt,
         breakdown: {
           registrations: computed.registrations,
