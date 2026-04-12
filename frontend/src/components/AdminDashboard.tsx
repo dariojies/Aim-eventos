@@ -509,7 +509,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
                 { label: '12 Años', key: 'shirt_12y' }, { label: '16 Años', key: 'shirt_16y' },
                 { label: 'Talla S', key: 'shirt_s' }
               ].map(size => {
-                const total = data.reduce((acc, curr) => acc + (curr.shirts?.[size.key.replace('shirt_', '')] || 0), 0);
+                const total = data.reduce((acc, curr) => acc + (parseInt(curr[size.key]) || 0), 0);
                 return (
                   <div key={size.key} className="glass" style={{ padding: 25, textAlign: 'center', border: '2px solid var(--primary)', background: total > 0 ? 'rgba(99, 102, 241, 0.05)' : 'white' }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8, textTransform: 'uppercase' }}>{size.label}</div>
