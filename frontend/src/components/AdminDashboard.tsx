@@ -39,50 +39,80 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Get user role and assignments
+      // 1. Get user role and assignments (Critical)
       const authRes = await axios.get(`${apiBase}/api/auth/status`);
       setUserRole(authRes.data.role);
       setAssignedCourse(authRes.data.assignedCourse);
-
-      if (authRes.data.role === 'superadmin') {
-        const assignRes = await axios.get(`${apiBase}/api/admin/assignments`);
-        setAssignments(assignRes.data);
-        const staffRes = await axios.get(`${apiBase}/api/admin/staff`);
-        setStaffAssignments(staffRes.data);
-      }
-
-      const res = await axios.get(`${apiBase}/api/admin/registrations`);
-      setData(res.data);
-      
-      const econRes = await axios.get(`${apiBase}/api/admin/economic-records`);
-      setEconomicRecords(econRes.data);
-
-      const totalP = res.data.reduce((acc: number, curr: any) => acc + curr.total_participants, 0);
-      const totalS = res.data.reduce((acc: number, curr: any) => {
-        return acc + curr.shirt_4y + curr.shirt_8y + curr.shirt_12y + curr.shirt_16y + 
-               curr.shirt_s + curr.shirt_m + curr.shirt_l + curr.shirt_xl + curr.shirt_xxl;
-      }, 0);
-
-      const ampaDebt = res.data.reduce((acc: number, curr: any) => acc + (curr.ampa_members * 3), 0);
-      const ampaPaid = econRes.data.filter((r: any) => r.course === 'AMPA').reduce((acc: number, curr: any) => acc + parseFloat(curr.amount), 0);
-
       const role = authRes.data.role;
 
-      const computed = res.data.reduce((acc: any, curr: any) => {
-        const regAmount = (curr.total_participants - curr.ampa_members) * 3;
-        const shirtsCount = curr.shirt_4y + curr.shirt_8y + curr.shirt_12y + curr.shirt_16y + 
-                           curr.shirt_s + curr.shirt_m + curr.shirt_l + curr.shirt_xl + curr.shirt_xxl;
-        const shirtAmount = shirtsCount * 7;
-        const total = regAmount + shirtAmount;
+      // 2. Fetch extra info only for superadmins
+      if (role === 'superadmin') {
+        try {
+          const [assignRes, staffRes] = await Promise.all([
+            axios.get(`${apiBase}/api/admin/assignments`),
+            axios.get(`${apiBase}/api/admin/staff`)
+          ]);
+          setAssignments(assignRes.data);
+          setStaffAssignments(staffRes.data);
+        } catch (e) { console.error("Error fetching admin assignments:", e); }
+      }
 
-        return {
-          registrations: acc.registrations + regAmount,
-          shirts: acc.shirts + shirtAmount,
-          ampa: acc.ampa + (curr.ampa_members * 3),
-          due: acc.due + total + (role === 'superadmin' || role === 'admin' ? (curr.ampa_members * 3) : 0),
-          paid: acc.paid + (curr.is_paid ? total : 0)
-        };
-      }, { registrations: 0, shirts: 0, ampa: 0, due: 0, paid: 0 });
+      // 3. Fetch Main Data (Registrations)
+      let registrations: any[] = [];
+      try {
+        const res = await axios.get(`${apiBase}/api/admin/registrations`);
+        registrations = res.data;
+        setData(res.data);
+      } catch (e) { console.error("Error fetching registrations:", e); }
+
+      // 4. Fetch Economic Records
+      let econRecords: any[] = [];
+      try {
+        const econRes = await axios.get(`${apiBase}/api/admin/economic-records`);
+        econRecords = econRes.data;
+        setEconomicRecords(econRes.data);
+      } catch (e) { console.error("Error fetching economic records:", e); }
+
+      // 5. Compute Stats (Only if we have registrations)
+      if (registrations.length > 0 || econRecords.length > 0) {
+        const totalP = registrations.reduce((acc: number, curr: any) => acc + curr.total_participants, 0);
+        const totalS = registrations.reduce((acc: number, curr: any) => {
+          return acc + curr.shirt_4y + curr.shirt_8y + curr.shirt_12y + curr.shirt_16y + 
+                 curr.shirt_s + curr.shirt_m + curr.shirt_l + curr.shirt_xl + curr.shirt_xxl;
+        }, 0);
+
+        const ampaDebt = registrations.reduce((acc: number, curr: any) => acc + (curr.ampa_members * 3), 0);
+        const ampaPaid = econRecords.filter((r: any) => r.course === 'AMPA').reduce((acc: number, curr: any) => acc + parseFloat(curr.amount), 0);
+
+        const computed = registrations.reduce((acc: any, curr: any) => {
+          const regAmount = (curr.total_participants - curr.ampa_members) * 3;
+          const shirtsCount = curr.shirt_4y + curr.shirt_8y + curr.shirt_12y + curr.shirt_16y + 
+                             curr.shirt_s + curr.shirt_m + curr.shirt_l + curr.shirt_xl + curr.shirt_xxl;
+          const shirtAmount = shirtsCount * 7;
+          const total = regAmount + shirtAmount;
+
+          return {
+            registrations: acc.registrations + regAmount,
+            shirts: acc.shirts + shirtAmount,
+            ampa: acc.ampa + (curr.ampa_members * 3),
+            due: acc.due + total + (role === 'superadmin' || role === 'admin' ? (curr.ampa_members * 3) : 0),
+            paid: acc.paid + (curr.is_paid ? total : 0)
+          };
+        }, { registrations: 0, shirts: 0, ampa: 0, due: 0, paid: 0 });
+
+        setStats({ 
+          totalParticipants: totalP, 
+          totalShirts: totalS, 
+          totalDue: computed.due, 
+          totalPaid: computed.paid + (role === 'superadmin' || role === 'admin' ? ampaPaid : 0),
+          totalAmpaDebt: ampaDebt,
+          breakdown: {
+            registrations: computed.registrations,
+            shirts: computed.shirts,
+            ampa: computed.ampa
+          }
+        });
+      }
 
       setStats({ 
         totalParticipants: totalP, 

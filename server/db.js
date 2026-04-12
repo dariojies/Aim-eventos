@@ -7,16 +7,19 @@ const pool = new Pool({
 });
 
 const initDB = async () => {
-  // MIGRACIÓN DE EMERGENCIA: Traspaso de datos de tablas viejas a nuevas
+  // MIGRACIÓN DE EMERGENCIA: Traspaso de datos de tablas viejas a nuevas usando SQL Dinámico
   const migrationQuery = `
     DO $$ 
+    DECLARE
+      row_count int;
     BEGIN 
       -- 1. Gestión de economic_records -> race_economic_records
       IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'economic_records') THEN
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_economic_records') THEN
-          IF (SELECT COUNT(*) FROM race_economic_records) = 0 THEN
-            INSERT INTO race_economic_records SELECT * FROM economic_records;
-            DROP TABLE economic_records;
+          EXECUTE 'SELECT count(*) FROM race_economic_records' INTO row_count;
+          IF row_count = 0 THEN
+            EXECUTE 'INSERT INTO race_economic_records SELECT * FROM economic_records';
+            EXECUTE 'DROP TABLE economic_records';
           END IF;
         ELSE
           ALTER TABLE economic_records RENAME TO race_economic_records;
@@ -26,9 +29,10 @@ const initDB = async () => {
       -- 2. Gestión de teacher_assignments -> race_teacher_assignments
       IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'teacher_assignments') THEN
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_teacher_assignments') THEN
-          IF (SELECT COUNT(*) FROM race_teacher_assignments) = 0 THEN
-            INSERT INTO race_teacher_assignments SELECT * FROM teacher_assignments;
-            DROP TABLE teacher_assignments;
+          EXECUTE 'SELECT count(*) FROM race_teacher_assignments' INTO row_count;
+          IF row_count = 0 THEN
+            EXECUTE 'INSERT INTO race_teacher_assignments SELECT * FROM teacher_assignments';
+            EXECUTE 'DROP TABLE teacher_assignments';
           END IF;
         ELSE
           ALTER TABLE teacher_assignments RENAME TO race_teacher_assignments;
@@ -38,9 +42,10 @@ const initDB = async () => {
       -- 3. Gestión de admin_assignments -> race_admin_assignments
       IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'admin_assignments') THEN
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_admin_assignments') THEN
-          IF (SELECT COUNT(*) FROM race_admin_assignments) = 0 THEN
-            INSERT INTO race_admin_assignments SELECT * FROM admin_assignments;
-            DROP TABLE admin_assignments;
+          EXECUTE 'SELECT count(*) FROM race_admin_assignments' INTO row_count;
+          IF row_count = 0 THEN
+            EXECUTE 'INSERT INTO race_admin_assignments SELECT * FROM admin_assignments';
+            EXECUTE 'DROP TABLE admin_assignments';
           END IF;
         ELSE
           ALTER TABLE admin_assignments RENAME TO race_admin_assignments;
@@ -50,9 +55,10 @@ const initDB = async () => {
       -- 4. Gestión de session -> race_sessions
       IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'session') THEN
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_sessions') THEN
-          IF (SELECT COUNT(*) FROM race_sessions) = 0 THEN
-            INSERT INTO race_sessions SELECT * FROM session;
-            DROP TABLE session;
+          EXECUTE 'SELECT count(*) FROM race_sessions' INTO row_count;
+          IF row_count = 0 THEN
+            EXECUTE 'INSERT INTO race_sessions SELECT * FROM session';
+            EXECUTE 'DROP TABLE session';
           END IF;
         ELSE
           ALTER TABLE session RENAME TO race_sessions;
