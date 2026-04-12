@@ -7,7 +7,25 @@ const pool = new Pool({
 });
 
 const initDB = async () => {
-  // MIGRACIÓN DE EMERGENCIA: Traspaso de datos de tablas viejas a nuevas usando SQL Dinámico
+  // Ensure tables exist before any migration attempt
+  const coreTables = `
+    CREATE TABLE IF NOT EXISTS race_teacher_assignments (
+      email VARCHAR(255) PRIMARY KEY,
+      assigned_course VARCHAR(100) NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS race_admin_assignments (
+      email VARCHAR(255) PRIMARY KEY,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `;
+  try {
+    await pool.query(coreTables);
+  } catch (err) {
+    console.error('Error creating core staff tables:', err);
+  }
+
+  // MIGRACIÓN DE EMERGENCIA...
   const migrationQuery = `
     DO $$ 
     DECLARE

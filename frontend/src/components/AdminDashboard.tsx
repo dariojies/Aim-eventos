@@ -47,14 +47,16 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
 
       // 2. Fetch extra info only for superadmins
       if (role === 'superadmin') {
+        // Fetch independently to avoid Promise.all failure cascade
         try {
-          const [assignRes, staffRes] = await Promise.all([
-            axios.get(`${apiBase}/api/admin/assignments`),
-            axios.get(`${apiBase}/api/admin/staff`)
-          ]);
-          setAssignments(assignRes.data);
-          setStaffAssignments(staffRes.data);
-        } catch (e) { console.error("Error fetching admin assignments:", e); }
+          const res = await axios.get(`${apiBase}/api/admin/assignments`);
+          setAssignments(res.data);
+        } catch (e) { console.error("Error fetching teacher assignments:", e); }
+        
+        try {
+          const res = await axios.get(`${apiBase}/api/admin/staff`);
+          setStaffAssignments(res.data);
+        } catch (e) { console.error("Error fetching staff assignments:", e); }
       }
 
       // 3. Fetch Main Data (Registrations)
