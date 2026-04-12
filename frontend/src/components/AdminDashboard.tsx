@@ -462,7 +462,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         </div>
       )}
 
-      {activeTab === 'economics' ? (
+      {activeTab === 'economics' && (
         <div className="animate">
           {/* Resumen Económico Destacado */}
           <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 30, gap: 20 }}>
@@ -576,7 +576,9 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
             </table>
           </div>
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'registrations' && (
         <div className="glass" style={{ padding: 20, overflowX: 'auto' }}>
           <table>
             <thead>
