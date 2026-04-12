@@ -10,13 +10,16 @@ interface Props {
 export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [stats, setStats] = useState({ totalParticipants: 0, totalShirts: 0, totalDue: 0, totalPaid: 0 });
+  const [stats, setStats] = useState({ totalParticipants: 0, totalShirts: 0, totalDue: 0, totalPaid: 0, totalAmpaDebt: 0 });
   const [filters, setFilters] = useState({ type: 'all', course: 'all' });
   const [userRole, setUserRole] = useState<'superadmin' | 'teacher' | null>(null);
   const [assignedCourse, setAssignedCourse] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'registrations' | 'economics'>('registrations');
+  const [economicRecords, setEconomicRecords] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [showAssignments, setShowAssignments] = useState(false);
   const [newAssignment, setNewAssignment] = useState({ email: '', course: '' });
+  const [newEconomicRecord, setNewEconomicRecord] = useState({ amount: '', date: new Date().toISOString().split('T')[0], observations: '', course: '' });
 
   const COURSES = [
     '3 años A', '3 años B', '4 años A', '4 años B', '5 años A', '5 años B',
@@ -40,11 +43,16 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
       const res = await axios.get(`${apiBase}/api/admin/registrations`);
       setData(res.data);
       
+      const econRes = await axios.get(`${apiBase}/api/admin/economic-records`);
+      setEconomicRecords(econRes.data);
+
       const totalP = res.data.reduce((acc: number, curr: any) => acc + curr.total_participants, 0);
       const totalS = res.data.reduce((acc: number, curr: any) => {
         return acc + curr.shirt_4y + curr.shirt_8y + curr.shirt_12y + curr.shirt_16y + 
                curr.shirt_s + curr.shirt_m + curr.shirt_l + curr.shirt_xl + curr.shirt_xxl;
       }, 0);
+
+      const ampaDebt = res.data.reduce((acc: number, curr: any) => acc + (curr.ampa_members * 3), 0);
 
       const computed = res.data.reduce((acc: any, curr: any) => {
         const amount = (curr.total_participants - curr.ampa_members) * 3 + 
@@ -56,7 +64,13 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         };
       }, { due: 0, paid: 0 });
 
-      setStats({ totalParticipants: totalP, totalShirts: totalS, totalDue: computed.due, totalPaid: computed.paid });
+      setStats({ 
+        totalParticipants: totalP, 
+        totalShirts: totalS, 
+        totalDue: computed.due, 
+        totalPaid: computed.paid,
+        totalAmpaDebt: ampaDebt
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -139,6 +153,28 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
     }
   };
 
+  const handleAddEconomicRecord = async () => {
+    if (!newEconomicRecord.amount || !newEconomicRecord.date) return;
+    try {
+      await axios.post(`${apiBase}/api/admin/economic-records`, newEconomicRecord);
+      setNewEconomicRecord({ amount: '', date: new Date().toISOString().split('T')[0], observations: '', course: '' });
+      await fetchData();
+      alert('Entrega registrada correctamente.');
+    } catch (err) {
+      alert('Error al registrar entrega.');
+    }
+  };
+
+  const handleDeleteEconomicRecord = async (id: string) => {
+    if (!confirm('¿Eliminar este registro de entrega?')) return;
+    try {
+      await axios.delete(`${apiBase}/api/admin/economic-records/${id}`);
+      await fetchData();
+    } catch (err) {
+      alert('Error al eliminar registro.');
+    }
+  };
+
   const calculateAmount = (reg: any) => {
     const shirtsCount = reg.shirt_4y + reg.shirt_8y + reg.shirt_12y + reg.shirt_16y + 
                        reg.shirt_s + reg.shirt_m + reg.shirt_l + reg.shirt_xl + reg.shirt_xxl;
@@ -146,7 +182,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
   };
 
   const exportCSV = () => {
-    const headers = ["Tipo", "Curso", "Nombre", "Dorsales", "Socios AMPA", "Participantes Totales", "Importe", "Pagado", "4y", "8y", "12y", "16y", "S", "M", "L", "XL", "XXL", "Observaciones"];
+    const headers = ["Tipo", "Curso", "Nombre", "Dorsales", "Socios AMPA", "Participantes Totales", "Importe", "Pagado", "Email (Externos)", "Teléfono (Externos)", "4y", "8y", "12y", "16y", "S", "M", "L", "XL", "XXL", "Observaciones"];
     const rows = data.map(r => [
       r.type,
       r.course || '-',
@@ -156,6 +192,8 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
       r.total_participants,
       calculateAmount(r),
       r.is_paid ? 'SÍ' : 'NO',
+      r.external_email || '-',
+      r.external_phone || '-',
       r.shirt_4y, r.shirt_8y, r.shirt_12y, r.shirt_16y, r.shirt_s, r.shirt_m, r.shirt_l, r.shirt_xl, r.shirt_xxl,
       `"${(r.observations || "").replace(/"/g, '""')}"`
     ]);
@@ -307,14 +345,14 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Participantes</label>
         </div>
         <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <Download size={24} color="var(--secondary)" style={{ marginBottom: 10 }} />
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>{stats.totalShirts}</div>
-          <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Camisetas</label>
-        </div>
-        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <Euro size={24} color="var(--accent)" style={{ marginBottom: 10 }} />
           <div style={{ color: 'var(--accent)', fontSize: '2rem', fontWeight: 700 }}>{stats.totalDue}€</div>
           <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Importe Total</label>
+        </div>
+        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <Users size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
+          <div style={{ color: '#f59e0b', fontSize: '2rem', fontWeight: 700 }}>{stats.totalAmpaDebt}€</div>
+          <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Deuda AMPA</label>
         </div>
         <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <Wallet size={24} color="#10b981" style={{ marginBottom: 10 }} />
@@ -322,6 +360,123 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           <label style={{ fontSize: '0.9rem', opacity: 0.8 }}>Recaudado</label>
         </div>
       </div>
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 25 }}>
+        <button 
+          className={`btn ${activeTab === 'registrations' ? 'btn-primary' : 'glass'}`} 
+          onClick={() => setActiveTab('registrations')}
+          style={{ flex: 1 }}
+        >
+          Inscripciones
+        </button>
+        <button 
+          className={`btn ${activeTab === 'economics' ? 'btn-primary' : 'glass'}`} 
+          onClick={() => setActiveTab('economics')}
+          style={{ flex: 1 }}
+        >
+          Gestión Económica (Entregas)
+        </button>
+      </div>
+
+      {activeTab === 'economics' ? (
+        <div className="glass animate" style={{ padding: 30 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 }}>
+            <div>
+              <h2 style={{ margin: 0 }}>Entregas a Dirección</h2>
+              <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Registra el dinero que entregas al centro</p>
+            </div>
+            {userRole === 'teacher' && (
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f59e0b' }}>
+                  {stats.totalPaid - economicRecords.reduce((acc, curr) => acc + parseFloat(curr.amount), 0)}€
+                </div>
+                <label style={{ fontSize: '0.7rem' }}>Pendiente de entregar</label>
+              </div>
+            )}
+          </div>
+
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', background: 'rgba(0,0,0,0.03)', padding: 20, borderRadius: 16, marginBottom: 30 }}>
+            {userRole === 'superadmin' && (
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>Curso</label>
+                <select 
+                  value={newEconomicRecord.course} 
+                  onChange={e => setNewEconomicRecord({ ...newEconomicRecord, course: e.target.value })}
+                >
+                  <option value="">Seleccionar curso</option>
+                  {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="Profesores">Profesores</option>
+                  <option value="Externos">Externos</option>
+                </select>
+              </div>
+            )}
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label>Importe (€)</label>
+              <input 
+                type="number" 
+                placeholder="0.00"
+                value={newEconomicRecord.amount}
+                onChange={e => setNewEconomicRecord({ ...newEconomicRecord, amount: e.target.value })}
+              />
+            </div>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label>Fecha</label>
+              <input 
+                type="date"
+                value={newEconomicRecord.date}
+                onChange={e => setNewEconomicRecord({ ...newEconomicRecord, date: e.target.value })}
+              />
+            </div>
+            <div className="input-group" style={{ marginBottom: 0 }}>
+              <label>Observaciones</label>
+              <input 
+                type="text"
+                placeholder="Opcional..."
+                value={newEconomicRecord.observations}
+                onChange={e => setNewEconomicRecord({ ...newEconomicRecord, observations: e.target.value })}
+              />
+            </div>
+            <button className="btn btn-primary" onClick={handleAddEconomicRecord} style={{ alignSelf: 'end', height: '45px' }}>
+              Registrar
+            </button>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                {userRole === 'superadmin' && <th>Curso</th>}
+                <th>Fecha Entrega</th>
+                <th>Importe</th>
+                <th>Observaciones</th>
+                {userRole === 'superadmin' && <th style={{ textAlign: 'right' }}>Acciones</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {economicRecords.map(rec => (
+                <tr key={rec.id}>
+                  {userRole === 'superadmin' && <td>{rec.course}</td>}
+                  <td>{new Date(rec.payment_date).toLocaleDateString()}</td>
+                  <td style={{ fontWeight: 700, color: 'var(--accent)' }}>{rec.amount}€</td>
+                  <td style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{rec.observations || '-'}</td>
+                  {userRole === 'superadmin' && (
+                    <td style={{ textAlign: 'right' }}>
+                      <button className="btn" style={{ padding: 5, color: '#ef4444' }} onClick={() => handleDeleteEconomicRecord(rec.id)}>
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {economicRecords.length === 0 && (
+                <tr>
+                  <td colSpan={userRole === 'superadmin' ? 5 : 3} style={{ textAlign: 'center', padding: 40, opacity: 0.5 }}>
+                    No hay registros de entregas.
+                  </td>
+                </tr>
+              </tbody>
+          </table>
+        </div>
+      ) : (
 
       <div className="glass" style={{ padding: 20, overflowX: 'auto' }}>
         <table>
@@ -359,12 +514,12 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
                 <td style={{ fontWeight: 700, color: 'var(--accent)' }}>
                   {calculateAmount(reg)}€
                 </td>
-                <td>
+                <td style={{ textAlign: 'center' }}>
                   <input 
                     type="checkbox" 
                     checked={reg.is_paid} 
                     onChange={() => handleTogglePaid(reg.id)}
-                    style={{ width: 20, height: 20, cursor: 'pointer' }}
+                    style={{ width: 22, height: 22, cursor: 'pointer', accentColor: 'var(--primary)' }}
                   />
                 </td>
                 <td style={{ textAlign: 'right' }}>
@@ -378,7 +533,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
             ))}
           </tbody>
         </table>
-      </div>
+      )}
     </div>
   );
 }

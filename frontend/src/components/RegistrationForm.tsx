@@ -25,7 +25,9 @@ export default function RegistrationForm({ apiBase }: Props) {
     ampa_members: 0,
     wants_shirts: false,
     shirts: { '4y': 0, '8y': 0, '12y': 0, '16y': 0, 's': 0, 'm': 0, 'l': 0, 'xl': 0, 'xxl': 0 },
-    observations: ''
+    observations: '',
+    email: '',
+    phone: ''
   });
 
   const handleSubmit = async (e: FormEvent) => {
@@ -51,7 +53,7 @@ export default function RegistrationForm({ apiBase }: Props) {
       <div className="card glass animate success-message">
         <CheckCircle size={64} color="#10b981" style={{ marginBottom: 20 }} />
         <h2>¡Registro Completado!</h2>
-        <p style={{ marginTop: 15, color: '#94a3b8' }}>
+        <p style={{ marginTop: 15, color: '#475569' }}>
           Tus datos han sido guardados correctamente. Nos vemos en la carrera.
         </p>
         <button className="btn btn-primary" style={{ marginTop: 30 }} onClick={() => setSubmitted(false)}>
@@ -73,7 +75,7 @@ export default function RegistrationForm({ apiBase }: Props) {
           >
             <option value="profesor">Profesor/a</option>
             <option value="alumno">Alumno/a</option>
-            <option value="externo">Externo/a (Familiar, Antiguo Alumno...)</option>
+            <option value="externo">Externo/a (Amigos, Antiguos alumnos, etc.)</option>
           </select>
         </div>
 
@@ -99,6 +101,31 @@ export default function RegistrationForm({ apiBase }: Props) {
             onChange={e => setFormData({ ...formData, full_name: e.target.value })}
           />
         </div>
+
+        {formData.type === 'externo' && (
+          <div className="grid" style={{ marginBottom: 20 }}>
+            <div className="input-group">
+              <label>Correo Electrónico</label>
+              <input 
+                type="email" 
+                required 
+                placeholder="ejemplo@email.com"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
+            <div className="input-group">
+              <label>Teléfono</label>
+              <input 
+                type="tel" 
+                required 
+                placeholder="600 000 000"
+                value={formData.phone}
+                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="grid" style={{ marginBottom: 20 }}>
           <div className="input-group">

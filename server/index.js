@@ -6,8 +6,8 @@ const path = require('path');
 const cors = require('cors');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const session = require('express-session');
 const { pool, initDB } = require('./db');
+const pgSession = require('connect-pg-simple')(session);
 
 const SUPER_ADMINS = ['jmmarinborrego@gmail.com', 'dario.jimenez@cevhuertadelacruzesur.es'];
 
@@ -19,10 +19,17 @@ const FRONTEND_URL = process.env.FRONTEND_URL || '';
 app.use(cors({ origin: FRONTEND_URL || true, credentials: true }));
 app.use(express.json());
 app.use(session({
+    store: new pgSession({
+        pool: pool,
+        tableName: 'session'
+    }),
     secret: process.env.SESSION_SECRET || 'secret',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === 'production' }
+    cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    }
 }));
 
 app.use(passport.initialize());
@@ -123,20 +130,20 @@ const isAdmin = async (req, res, next) => {
 
 // Public Routes
 app.post('/api/register', async (req, res) => {
-    const { type, course, full_name, total_participants, ampa_members, wants_shirts, shirts, observations } = req.body;
+    const { type, course, full_name, total_participants, ampa_members, wants_shirts, shirts, observations, email, phone } = req.body;
     try {
         const query = `
             INSERT INTO race_registrations (
                 type, course, full_name, total_participants, ampa_members, wants_shirts,
                 shirt_4y, shirt_8y, shirt_12y, shirt_16y, shirt_s, shirt_m, shirt_l, shirt_xl, shirt_xxl, 
-                observations
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`;
+                observations, external_email, external_phone
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`;
 
         const values = [
             type, course || null, full_name, total_participants || 1, ampa_members || 0, wants_shirts || false,
             shirts['4y'] || 0, shirts['8y'] || 0, shirts['12y'] || 0, shirts['16y'] || 0,
             shirts['s'] || 0, shirts['m'] || 0, shirts['l'] || 0, shirts['xl'] || 0, shirts['xxl'] || 0,
-            observations || null
+            observations || null, email || null, phone || null
         ];
 
         const result = await pool.query(query, values);
@@ -168,7 +175,7 @@ app.get('/api/admin/registrations', isAdmin, async (req, res) => {
 
 app.post('/api/admin/generate-dorsales', isAdmin, async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM race_registrations');
+        const result = await pool.query('SELECT * FROM race_registrations WHERE is_paid = true');
         const registrations = result.rows;
 
         // Sort registrations (Alumnos -> Professors -> Externos)
@@ -272,7 +279,49 @@ app.delete('/api/admin/assignments/:email', isAdmin, async (req, res) => {
     }
 });
 
-// The "catchall" handler: for any request that doesn't
+// Economic Management Routes
+app.get('/api/admin/economic-records', isAdmin, async (req, res) => {
+    try {
+        let query = 'SELECT * FROM economic_records';
+        let values = [];
+        if (req.userRole === 'teacher') {
+            query += ' WHERE course = $1';
+            values.push(req.assignedCourse);
+        }
+        query += ' ORDER BY payment_date DESC';
+        const result = await pool.query(query, values);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch economic records' });
+    }
+});
+
+app.post('/api/admin/economic-records', isAdmin, async (req, res) => {
+    const { amount, date, observations } = req.body;
+    const course = req.userRole === 'teacher' ? req.assignedCourse : req.body.course;
+    
+    if (!course) return res.status(400).json({ error: 'Course is required' });
+
+    try {
+        await pool.query(
+            'INSERT INTO economic_records (course, amount, payment_date, observations) VALUES ($1, $2, $3, $4)',
+            [course, amount, date, observations]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to save economic record' });
+    }
+});
+
+app.delete('/api/admin/economic-records/:id', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Unauthorized' });
+    try {
+        await pool.query('DELETE FROM economic_records WHERE id = $1', [req.params.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete record' });
+    }
+});
 // match one above, send back React's index.html file.
 app.get('*', (req, res) => {
     const indexPath = path.join(__dirname, '../frontend/dist/index.html');

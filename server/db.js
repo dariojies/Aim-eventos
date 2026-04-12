@@ -43,7 +43,37 @@ const initDB = async () => {
       IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_registrations' AND column_name='is_paid') THEN
         ALTER TABLE race_registrations ADD COLUMN is_paid BOOLEAN DEFAULT false;
       END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_registrations' AND column_name='external_email') THEN
+        ALTER TABLE race_registrations ADD COLUMN external_email VARCHAR(255);
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_registrations' AND column_name='external_phone') THEN
+        ALTER TABLE race_registrations ADD COLUMN external_phone VARCHAR(50);
+      END IF;
     END $$;
+
+    CREATE TABLE IF NOT EXISTS economic_records (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      course VARCHAR(100) NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      payment_date DATE NOT NULL,
+      observations TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS "session" (
+      "sid" varchar NOT NULL COLLATE "default",
+      "sess" json NOT NULL,
+      "expire" timestamp(6) NOT NULL
+    );
+
+    DO $$ 
+    BEGIN 
+      IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name='session_pkey') THEN
+        ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
+      END IF;
+    END $$;
+
+    CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
   `;
   try {
     await pool.query(queryText);
