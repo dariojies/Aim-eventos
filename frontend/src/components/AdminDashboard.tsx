@@ -423,15 +423,32 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         <div className="animate">
           <div className="glass" style={{ padding: 40 }}>
             <h2 style={{ marginBottom: 30, textAlign: 'center' }}>Totales por Tallas</h2>
-            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 20 }}>
+            
+            {/* Primera fila: 5 tallas */}
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', gap: 20, marginBottom: 20 }}>
               {[
                 { label: '4 Años', key: 'shirt_4y' }, { label: '8 Años', key: 'shirt_8y' },
                 { label: '12 Años', key: 'shirt_12y' }, { label: '16 Años', key: 'shirt_16y' },
-                { label: 'S', key: 'shirt_s' }, { label: 'M', key: 'shirt_m' },
-                { label: 'L', key: 'shirt_l' }, { label: 'XL', key: 'shirt_xl' },
-                { label: 'XXL', key: 'shirt_xxl' }
+                { label: 'Talla S', key: 'shirt_s' }
               ].map(size => {
-                const total = data.reduce((acc, curr) => acc + (curr[size.key] || 0), 0);
+                const total = data.reduce((acc, curr) => acc + (curr.shirts?.[size.key.replace('shirt_', '')] || 0), 0);
+                return (
+                  <div key={size.key} className="glass" style={{ padding: 25, textAlign: 'center', border: '2px solid var(--primary)', background: total > 0 ? 'rgba(99, 102, 241, 0.05)' : 'white' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8, textTransform: 'uppercase' }}>{size.label}</div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--primary)' }}>{total}</div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>Unidades</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Segunda fila: 4 tallas */}
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, maxWidth: '80%', margin: '0 auto' }}>
+              {[
+                { label: 'Talla M', key: 'shirt_m' }, { label: 'Talla L', key: 'shirt_l' },
+                { label: 'Talla XL', key: 'shirt_xl' }, { label: 'Talla XXL', key: 'shirt_xxl' }
+              ].map(size => {
+                const total = data.reduce((acc, curr) => acc + (curr.shirts?.[size.key.replace('shirt_', '')] || 0), 0);
                 return (
                   <div key={size.key} className="glass" style={{ padding: 25, textAlign: 'center', border: '2px solid var(--primary)', background: total > 0 ? 'rgba(99, 102, 241, 0.05)' : 'white' }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8, textTransform: 'uppercase' }}>{size.label}</div>
