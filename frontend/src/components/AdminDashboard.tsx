@@ -21,7 +21,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const [filters, setFilters] = useState({ type: 'all', course: 'all' });
   const [userRole, setUserRole] = useState<'superadmin' | 'teacher' | null>(null);
   const [assignedCourse, setAssignedCourse] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'registrations' | 'economics'>('registrations');
+  const [activeTab, setActiveTab] = useState<'registrations' | 'economics' | 'shirts'>('registrations');
   const [economicRecords, setEconomicRecords] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [showAssignments, setShowAssignments] = useState(false);
@@ -366,6 +366,9 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid var(--accent)' }}>
           <Euro size={24} color="var(--accent)" style={{ marginBottom: 10 }} />
           <div style={{ color: 'var(--accent)', fontSize: '2rem', fontWeight: 800 }}>{stats.totalDue}€</div>
+          <div style={{ fontSize: '0.7rem', opacity: 0.7, marginTop: 5 }}>
+            {stats.breakdown.registrations}€ Insc. + {stats.breakdown.shirts}€ Camis.{userRole === 'superadmin' && ` + ${stats.breakdown.ampa}€ AMPA`}
+          </div>
           <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Total a Recaudar</label>
         </div>
 
@@ -399,13 +402,39 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           Inscripciones
         </button>
         <button 
-          className={`btn ${activeTab === 'economics' ? 'btn-primary' : 'glass'}`} 
-          onClick={() => setActiveTab('economics')}
+          className={`btn ${activeTab === 'shirts' ? 'btn-primary' : 'glass'}`} 
+          onClick={() => setActiveTab('shirts')}
           style={{ flex: 1 }}
         >
-          Gestión Económica (Entregas)
+          Resumen Camisetas
         </button>
       </div>
+
+      {activeTab === 'shirts' && (
+        <div className="animate">
+          <div className="glass" style={{ padding: 40 }}>
+            <h2 style={{ marginBottom: 30, textAlign: 'center' }}>Totales por Tallas</h2>
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 20 }}>
+              {[
+                { label: '4 Años', key: 'shirt_4y' }, { label: '8 Años', key: 'shirt_8y' },
+                { label: '12 Años', key: 'shirt_12y' }, { label: '16 Años', key: 'shirt_16y' },
+                { label: 'S', key: 'shirt_s' }, { label: 'M', key: 'shirt_m' },
+                { label: 'L', key: 'shirt_l' }, { label: 'XL', key: 'shirt_xl' },
+                { label: 'XXL', key: 'shirt_xxl' }
+              ].map(size => {
+                const total = data.reduce((acc, curr) => acc + (curr[size.key] || 0), 0);
+                return (
+                  <div key={size.key} className="glass" style={{ padding: 25, textAlign: 'center', border: '2px solid var(--primary)', background: total > 0 ? 'rgba(99, 102, 241, 0.05)' : 'white' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8, textTransform: 'uppercase' }}>{size.label}</div>
+                    <div style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--primary)' }}>{total}</div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>Unidades</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab === 'economics' ? (
         <div className="animate">

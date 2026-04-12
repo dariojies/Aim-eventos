@@ -12,12 +12,14 @@ import { Shield, Home } from 'lucide-react';
 export default function App() {
   const [view, setView] = useState<'public' | 'admin-login' | 'admin-dashboard'>('public');
   const [authStatus, setAuthStatus] = useState<boolean | null>(null);
+  const [assignedCourse, setAssignedCourse] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if user is already logged in as admin
     axios.get(`${API_BASE}/api/auth/status`)
       .then(res => {
         setAuthStatus(res.data.authenticated);
+        setAssignedCourse(res.data.assignedCourse);
         if (res.data.authenticated && window.location.pathname === '/admin') {
           setView('admin-dashboard');
         }
@@ -56,7 +58,7 @@ export default function App() {
 
   return (
     <div className="app">
-      {view === 'public' && <RegistrationForm apiBase={API_BASE} />}
+      {view === 'public' && <RegistrationForm apiBase={API_BASE} preselectCourse={assignedCourse} />}
       {view === 'admin-login' && <AdminLogin apiBase={API_BASE} />}
       {view === 'admin-dashboard' && <AdminDashboard apiBase={API_BASE} onLogout={() => setAuthStatus(false)} />}
       

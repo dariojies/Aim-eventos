@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import axios from 'axios';
 import { Send, CheckCircle, Info } from 'lucide-react';
 
@@ -12,14 +12,15 @@ const SHIRT_SIZES = ['4y', '8y', '12y', '16y', 's', 'm', 'l', 'xl', 'xxl'];
 
 interface Props {
   apiBase: string;
+  preselectCourse?: string | null;
 }
 
-export default function RegistrationForm({ apiBase }: Props) {
+export default function RegistrationForm({ apiBase, preselectCourse }: Props) {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     type: 'alumno',
-    course: COURSES[0],
+    course: preselectCourse || COURSES[0],
     full_name: '',
     total_participants: 1,
     ampa_members: 0,
@@ -29,6 +30,12 @@ export default function RegistrationForm({ apiBase }: Props) {
     email: '',
     phone: ''
   });
+
+  useEffect(() => {
+    if (preselectCourse) {
+      setFormData(prev => ({ ...prev, course: preselectCourse }));
+    }
+  }, [preselectCourse]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
