@@ -367,7 +367,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           <Euro size={24} color="var(--accent)" style={{ marginBottom: 10 }} />
           <div style={{ color: 'var(--accent)', fontSize: '2rem', fontWeight: 800 }}>{stats.totalDue}€</div>
           <div style={{ fontSize: '0.7rem', opacity: 0.7, marginTop: 5 }}>
-            {stats.breakdown.registrations}€ Insc. + {stats.breakdown.shirts}€ Camis.{userRole === 'superadmin' && ` + ${stats.breakdown.ampa}€ AMPA`}
+            {stats.breakdown.registrations}€ Insc. + {stats.breakdown.shirts}€ Camis.
           </div>
           <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Total a Recaudar</label>
         </div>
