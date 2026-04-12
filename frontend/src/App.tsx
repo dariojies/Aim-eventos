@@ -25,25 +25,32 @@ export default function App() {
       .catch(() => setAuthStatus(false));
   }, []);
 
-  // Simple route handling
+  // Handle navigation and auth status
   useEffect(() => {
-    const path = window.location.pathname;
-    if (path === '/admin') {
-      if (authStatus === true) setView('admin-dashboard');
-      else setView('admin-login');
-    } else {
-      setView('public');
-    }
+    const handlePathChange = () => {
+      const path = window.location.pathname;
+      if (path === '/admin') {
+        if (authStatus === true) setView('admin-dashboard');
+        else setView('admin-login');
+      } else {
+        setView('public');
+      }
+    };
+
+    handlePathChange();
+    window.addEventListener('popstate', handlePathChange);
+    return () => window.removeEventListener('popstate', handlePathChange);
   }, [authStatus]);
 
   const toggleAdmin = (e: MouseEvent) => {
     e.preventDefault();
     if (view === 'public') {
-      setView('admin-login');
       window.history.pushState({}, '', '/admin');
+      if (authStatus === true) setView('admin-dashboard');
+      else setView('admin-login');
     } else {
-      setView('public');
       window.history.pushState({}, '', '/');
+      setView('public');
     }
   };
 

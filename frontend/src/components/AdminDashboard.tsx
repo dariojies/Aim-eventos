@@ -379,103 +379,117 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
       </div>
 
       {activeTab === 'economics' ? (
-        <div className="glass animate" style={{ padding: 30 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 }}>
-            <div>
-              <h2 style={{ margin: 0 }}>Entregas a Dirección</h2>
-              <p style={{ color: 'var(--text-dim)', fontSize: '0.9rem' }}>Registra el dinero que entregas al centro</p>
+        <div className="animate">
+          {/* Resumen Económico Destacado */}
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: 30, gap: 20 }}>
+            <div className="glass" style={{ padding: 25, textAlign: 'center', borderBottom: '4px solid var(--primary)' }}>
+              <Euro size={24} color="var(--primary)" style={{ marginBottom: 10 }} />
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--primary)' }}>{stats.totalPaid}€</div>
+              <label style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Cobrado a Familias</label>
             </div>
-            {userRole === 'teacher' && (
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#f59e0b' }}>
-                  {stats.totalPaid - economicRecords.reduce((acc, curr) => acc + parseFloat(curr.amount), 0)}€
+            <div className="glass" style={{ padding: 25, textAlign: 'center', borderBottom: '4px solid var(--accent)' }}>
+              <Download size={24} color="var(--accent)" style={{ marginBottom: 10 }} />
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--accent)' }}>
+                {economicRecords.reduce((acc, curr) => acc + parseFloat(curr.amount), 0)}€
+              </div>
+              <label style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Entregado a Dirección</label>
+            </div>
+            <div className="glass" style={{ padding: 25, textAlign: 'center', borderBottom: '4px solid var(--warning)' }}>
+              <Wallet size={24} color="var(--warning)" style={{ marginBottom: 10 }} />
+              <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--warning)' }}>
+                {(stats.totalPaid - economicRecords.reduce((acc, curr) => acc + parseFloat(curr.amount), 0)).toFixed(2)}€
+              </div>
+              <label style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dinero en Mano (Falta)</label>
+            </div>
+          </div>
+
+          <div className="glass" style={{ padding: 35, marginBottom: 30 }}>
+            <h3 style={{ marginBottom: 25, textAlign: 'center', fontWeight: 700 }}>Registrar Nueva Entrega a Dirección</h3>
+            <div className="grid" style={{ gridTemplateColumns: userRole === 'superadmin' ? '1.2fr 1fr 1fr 2fr 150px' : '1fr 1fr 2fr 150px', gap: 15 }}>
+              {userRole === 'superadmin' && (
+                <div className="input-group" style={{ marginBottom: 0 }}>
+                  <label>Curso</label>
+                  <select 
+                    value={newEconomicRecord.course} 
+                    onChange={e => setNewEconomicRecord({ ...newEconomicRecord, course: e.target.value })}
+                  >
+                    <option value="">Curso...</option>
+                    {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="Profesores">Profesores</option>
+                    <option value="Externos">Externos</option>
+                  </select>
                 </div>
-                <label style={{ fontSize: '0.7rem' }}>Pendiente de entregar</label>
-              </div>
-            )}
-          </div>
-
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', background: 'rgba(0,0,0,0.03)', padding: 20, borderRadius: 16, marginBottom: 30 }}>
-            {userRole === 'superadmin' && (
-              <div className="input-group" style={{ marginBottom: 0 }}>
-                <label>Curso</label>
-                <select 
-                  value={newEconomicRecord.course} 
-                  onChange={e => setNewEconomicRecord({ ...newEconomicRecord, course: e.target.value })}
-                >
-                  <option value="">Seleccionar curso</option>
-                  {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
-                  <option value="Profesores">Profesores</option>
-                  <option value="Externos">Externos</option>
-                </select>
-              </div>
-            )}
-            <div className="input-group" style={{ marginBottom: 0 }}>
-              <label>Importe (€)</label>
-              <input 
-                type="number" 
-                placeholder="0.00"
-                value={newEconomicRecord.amount}
-                onChange={e => setNewEconomicRecord({ ...newEconomicRecord, amount: e.target.value })}
-              />
-            </div>
-            <div className="input-group" style={{ marginBottom: 0 }}>
-              <label>Fecha</label>
-              <input 
-                type="date"
-                value={newEconomicRecord.date}
-                onChange={e => setNewEconomicRecord({ ...newEconomicRecord, date: e.target.value })}
-              />
-            </div>
-            <div className="input-group" style={{ marginBottom: 0 }}>
-              <label>Observaciones</label>
-              <input 
-                type="text"
-                placeholder="Opcional..."
-                value={newEconomicRecord.observations}
-                onChange={e => setNewEconomicRecord({ ...newEconomicRecord, observations: e.target.value })}
-              />
-            </div>
-            <button className="btn btn-primary" onClick={handleAddEconomicRecord} style={{ alignSelf: 'end', height: '45px' }}>
-              Registrar
-            </button>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                {userRole === 'superadmin' && <th>Curso</th>}
-                <th>Fecha Entrega</th>
-                <th>Importe</th>
-                <th>Observaciones</th>
-                {userRole === 'superadmin' && <th style={{ textAlign: 'right' }}>Acciones</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {economicRecords.map(rec => (
-                <tr key={rec.id}>
-                  {userRole === 'superadmin' && <td>{rec.course}</td>}
-                  <td>{new Date(rec.payment_date).toLocaleDateString()}</td>
-                  <td style={{ fontWeight: 700, color: 'var(--accent)' }}>{rec.amount}€</td>
-                  <td style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{rec.observations || '-'}</td>
-                  {userRole === 'superadmin' && (
-                    <td style={{ textAlign: 'right' }}>
-                      <button className="btn" style={{ padding: 5, color: '#ef4444' }} onClick={() => handleDeleteEconomicRecord(rec.id)}>
-                        <Trash2 size={18} />
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-              {economicRecords.length === 0 && (
-                <tr>
-                  <td colSpan={userRole === 'superadmin' ? 5 : 3} style={{ textAlign: 'center', padding: 40, opacity: 0.5 }}>
-                    No hay registros de entregas.
-                  </td>
-                </tr>
               )}
-            </tbody>
-          </table>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>Cantidad (€)</label>
+                <input 
+                  type="number" 
+                  placeholder="Ej: 80"
+                  value={newEconomicRecord.amount}
+                  onChange={e => setNewEconomicRecord({ ...newEconomicRecord, amount: e.target.value })}
+                />
+              </div>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>Fecha</label>
+                <input 
+                  type="date"
+                  value={newEconomicRecord.date}
+                  onChange={e => setNewEconomicRecord({ ...newEconomicRecord, date: e.target.value })}
+                />
+              </div>
+              <div className="input-group" style={{ marginBottom: 0 }}>
+                <label>Observación (Opcional)</label>
+                <input 
+                  type="text"
+                  placeholder="Ej: Entregado en mano..."
+                  value={newEconomicRecord.observations}
+                  onChange={e => setNewEconomicRecord({ ...newEconomicRecord, observations: e.target.value })}
+                />
+              </div>
+              <button className="btn btn-primary" onClick={handleAddEconomicRecord} style={{ alignSelf: 'end', height: '54px', width: '100%' }}>
+                Enviar
+              </button>
+            </div>
+          </div>
+
+          <div className="glass" style={{ padding: 30 }}>
+            <h3 style={{ marginBottom: 20, fontWeight: 700 }}>Historial de Entregas</h3>
+            <table>
+              <thead>
+                <tr>
+                  {userRole === 'superadmin' && <th>Curso</th>}
+                  <th>Fecha</th>
+                  <th>Importe</th>
+                  <th>Observaciones</th>
+                  {userRole === 'superadmin' && <th style={{ textAlign: 'right' }}>Acciones</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {economicRecords.map(rec => (
+                  <tr key={rec.id}>
+                    {userRole === 'superadmin' && <td>{rec.course}</td>}
+                    <td>{new Date(rec.payment_date).toLocaleDateString()}</td>
+                    <td style={{ fontWeight: 800, color: 'var(--accent)' }}>{rec.amount}€</td>
+                    <td style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>{rec.observations || '-'}</td>
+                    {userRole === 'superadmin' && (
+                      <td style={{ textAlign: 'right' }}>
+                        <button className="btn" style={{ padding: 5, color: '#ef4444', background: 'transparent' }} onClick={() => handleDeleteEconomicRecord(rec.id)}>
+                          <Trash2 size={18} />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+                {economicRecords.length === 0 && (
+                  <tr>
+                    <td colSpan={userRole === 'superadmin' ? 5 : 3} style={{ textAlign: 'center', padding: 40, opacity: 0.5 }}>
+                      No hay registros de entregas todavía.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="glass" style={{ padding: 20, overflowX: 'auto' }}>
