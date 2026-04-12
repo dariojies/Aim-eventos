@@ -176,11 +176,20 @@ app.get('/api/admin/registrations', isAdmin, async (req, res) => {
 
 app.post('/api/admin/generate-dorsales', isAdmin, async (req, res) => {
     try {
-        const result = await pool.query('SELECT * FROM race_registrations WHERE is_paid = true');
-        const registrations = result.rows;
+        // Find current max dorsal to continue from there
+        const maxRes = await pool.query('SELECT MAX(dorsal_end) as max_dorsal FROM race_registrations');
+        let currentDorsal = (maxRes.rows[0].max_dorsal || 0) + 1;
 
-        // Sort registrations (Alumnos -> Professors -> Externos)
-        registrations.sort((a, b) => {
+        // Get only paid registrations that DON'T have a dorsal yet
+        const result = await pool.query('SELECT * FROM race_registrations WHERE is_paid = true AND dorsal_start IS NULL');
+        const newRegistrations = result.rows;
+
+        if (newRegistrations.length === 0) {
+            return res.json({ success: true, count: 0, message: 'No new paid registrations to process' });
+        }
+
+        // Sort ONLY the new registrations (Alumnos -> Professors -> Externos)
+        newRegistrations.sort((a, b) => {
             const typeA = a.type === 'profesor' ? 'Profesores' : (a.type === 'externo' ? 'Externos' : a.course);
             const typeB = b.type === 'profesor' ? 'Profesores' : (b.type === 'externo' ? 'Externos' : b.course);
 
@@ -191,16 +200,14 @@ app.post('/api/admin/generate-dorsales', isAdmin, async (req, res) => {
             return a.full_name.localeCompare(b.full_name);
         });
 
-        let currentDorsal = 1;
-
-        for (const reg of registrations) {
+        for (const reg of newRegistrations) {
             const start = currentDorsal;
             const end = currentDorsal + reg.total_participants - 1;
             await pool.query('UPDATE race_registrations SET dorsal_start = $1, dorsal_end = $2 WHERE id = $3', [start, end, reg.id]);
             currentDorsal = end + 1;
         }
 
-        res.json({ success: true, count: registrations.length });
+        res.json({ success: true, count: newRegistrations.length });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to generate dorsales' });
