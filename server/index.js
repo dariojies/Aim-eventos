@@ -22,7 +22,7 @@ app.use(express.json());
 app.use(session({
     store: new pgSession({
         pool: pool,
-        tableName: 'session'
+        tableName: 'race_sessions'
     }),
     secret: process.env.SESSION_SECRET || 'secret',
     resave: false,
@@ -81,20 +81,29 @@ app.get('/auth/google/callback', passport.authenticate('google', { failureRedire
 app.get('/api/auth/status', async (req, res) => {
     if (req.isAuthenticated()) {
         const email = req.user.emails[0].value.toLowerCase();
-        const isSuper = SUPER_ADMINS.includes(email);
         
+        // 1. Check if hardcoded SuperAdmin
+        if (SUPER_ADMINS.includes(email)) {
+            return res.json({ authenticated: true, user: req.user, role: 'superadmin' });
+        }
+
+        // 2. Check if Dynamic Admin (Staff/Direccion)
+        const adminCheck = await pool.query('SELECT * FROM race_admin_assignments WHERE email = $1', [email]);
+        if (adminCheck.rows.length > 0) {
+            return res.json({ authenticated: true, user: req.user, role: 'admin' });
+        }
+
+        // 3. Check if Teacher/Tutor
+        const teacherCheck = await pool.query('SELECT assigned_course FROM race_teacher_assignments WHERE email = $1', [email]);
         let assignedCourse = null;
-        if (!isSuper) {
-            const result = await pool.query('SELECT assigned_course FROM teacher_assignments WHERE email = $1', [email]);
-            if (result.rows.length > 0) {
-                assignedCourse = result.rows[0].assigned_course;
-            }
+        if (teacherCheck.rows.length > 0) {
+            assignedCourse = teacherCheck.rows[0].assigned_course;
         }
 
         res.json({ 
             authenticated: true, 
             user: req.user,
-            role: isSuper ? 'superadmin' : 'teacher',
+            role: assignedCourse ? 'teacher' : 'unauthorized',
             assignedCourse
         });
     } else {
@@ -114,15 +123,25 @@ const isAdmin = async (req, res, next) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
     
     const email = req.user.emails[0].value.toLowerCase();
+    
+    // Check SuperAdmin (Code)
     if (SUPER_ADMINS.includes(email)) {
         req.userRole = 'superadmin';
         return next();
     }
 
-    const result = await pool.query('SELECT assigned_course FROM teacher_assignments WHERE email = $1', [email]);
-    if (result.rows.length > 0) {
+    // Check Admin (DB)
+    const adminCheck = await pool.query('SELECT * FROM race_admin_assignments WHERE email = $1', [email]);
+    if (adminCheck.rows.length > 0) {
+        req.userRole = 'admin';
+        return next();
+    }
+
+    // Check Teacher (DB)
+    const teacherCheck = await pool.query('SELECT assigned_course FROM race_teacher_assignments WHERE email = $1', [email]);
+    if (teacherCheck.rows.length > 0) {
         req.userRole = 'teacher';
-        req.assignedCourse = result.rows[0].assigned_course;
+        req.assignedCourse = teacherCheck.rows[0].assigned_course;
         return next();
     }
 
@@ -256,7 +275,7 @@ app.delete('/api/admin/registrations/:id', isAdmin, async (req, res) => {
 app.get('/api/admin/assignments', isAdmin, async (req, res) => {
     if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Unauthorized' });
     try {
-        const result = await pool.query('SELECT * FROM teacher_assignments ORDER BY email ASC');
+        const result = await pool.query('SELECT * FROM race_teacher_assignments ORDER BY email ASC');
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch assignments' });
@@ -268,7 +287,7 @@ app.post('/api/admin/assignments', isAdmin, async (req, res) => {
     const { email, course } = req.body;
     try {
         await pool.query(
-            'INSERT INTO teacher_assignments (email, assigned_course) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET assigned_course = EXCLUDED.assigned_course',
+            'INSERT INTO race_teacher_assignments (email, assigned_course) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET assigned_course = EXCLUDED.assigned_course',
             [email.toLowerCase(), course]
         );
         res.json({ success: true });
@@ -280,17 +299,57 @@ app.post('/api/admin/assignments', isAdmin, async (req, res) => {
 app.delete('/api/admin/assignments/:email', isAdmin, async (req, res) => {
     if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Unauthorized' });
     try {
-        await pool.query('DELETE FROM teacher_assignments WHERE email = $1', [req.params.email.toLowerCase()]);
+        await pool.query('DELETE FROM race_teacher_assignments WHERE email = $1', [req.params.email.toLowerCase()]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete assignment' });
+    }
+});
+// Admin assignments management (SuperAdmin Only)
+app.get('/api/admin/staff', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    try {
+        const result = await pool.query('SELECT * FROM race_admin_assignments ORDER BY created_at DESC');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch staff' });
+    }
+});
+
+app.post('/api/admin/staff', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    const { email } = req.body;
+    
+    // Validation: Domain check
+    const domain = email.toLowerCase().split('@')[1];
+    const allowedDomain = (process.env.AUTH_DOMAIN || '').toLowerCase();
+    
+    if (domain !== allowedDomain) {
+        return res.status(400).json({ error: `Solo se permiten correos del dominio ${allowedDomain}` });
+    }
+
+    try {
+        await pool.query('INSERT INTO race_admin_assignments (email) VALUES ($1) ON CONFLICT (email) DO NOTHING', [email.toLowerCase()]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to add staff' });
+    }
+});
+
+app.delete('/api/admin/staff/:email', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    try {
+        await pool.query('DELETE FROM race_admin_assignments WHERE email = $1', [req.params.email.toLowerCase()]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete staff' });
     }
 });
 
 // Economic Management Routes
 app.get('/api/admin/economic-records', isAdmin, async (req, res) => {
     try {
-        let query = 'SELECT * FROM economic_records';
+        let query = 'SELECT * FROM race_economic_records';
         let values = [];
         if (req.userRole === 'teacher') {
             query += ' WHERE course = $1';
@@ -312,7 +371,7 @@ app.post('/api/admin/economic-records', isAdmin, async (req, res) => {
 
     try {
         await pool.query(
-            'INSERT INTO economic_records (course, amount, payment_date, observations) VALUES ($1, $2, $3, $4)',
+            'INSERT INTO race_economic_records (course, amount, payment_date, observations) VALUES ($1, $2, $3, $4)',
             [course, amount, date, observations]
         );
         res.json({ success: true });
@@ -324,7 +383,7 @@ app.post('/api/admin/economic-records', isAdmin, async (req, res) => {
 app.delete('/api/admin/economic-records/:id', isAdmin, async (req, res) => {
     if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Unauthorized' });
     try {
-        await pool.query('DELETE FROM economic_records WHERE id = $1', [req.params.id]);
+        await pool.query('DELETE FROM race_economic_records WHERE id = $1', [req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete record' });

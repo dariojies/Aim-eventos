@@ -26,6 +26,8 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const [assignments, setAssignments] = useState<any[]>([]);
   const [showAssignments, setShowAssignments] = useState(false);
   const [newAssignment, setNewAssignment] = useState({ email: '', course: '' });
+  const [staffAssignments, setStaffAssignments] = useState<any[]>([]);
+  const [newStaffEmail, setNewStaffEmail] = useState('');
   const [newEconomicRecord, setNewEconomicRecord] = useState({ amount: '', date: new Date().toISOString().split('T')[0], observations: '', course: '' });
 
   const COURSES = [
@@ -45,6 +47,8 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
       if (authRes.data.role === 'superadmin') {
         const assignRes = await axios.get(`${apiBase}/api/admin/assignments`);
         setAssignments(assignRes.data);
+        const staffRes = await axios.get(`${apiBase}/api/admin/staff`);
+        setStaffAssignments(staffRes.data);
       }
 
       const res = await axios.get(`${apiBase}/api/admin/registrations`);
@@ -196,6 +200,25 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
     }
   };
 
+  const handleDeleteStaff = async (email: string) => {
+    if (!window.confirm(`¿Quitar permisos de administrador a ${email}?`)) return;
+    try {
+      await axios.delete(`${apiBase}/api/admin/staff/${email}`);
+      fetchData();
+    } catch (err) { alert('Error al borrar'); }
+  };
+
+  const handleAddStaff = async () => {
+    if (!newStaffEmail) return;
+    try {
+      await axios.post(`${apiBase}/api/admin/staff`, { email: newStaffEmail });
+      setNewStaffEmail('');
+      fetchData();
+    } catch (err: any) { 
+      alert(err.response?.data?.error || 'Error al añadir'); 
+    }
+  };
+
   const calculateAmount = (reg: any) => {
     const shirtsCount = reg.shirt_4y + reg.shirt_8y + reg.shirt_12y + reg.shirt_16y + 
                        reg.shirt_s + reg.shirt_m + reg.shirt_l + reg.shirt_xl + reg.shirt_xxl;
@@ -255,15 +278,19 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         <div>
           <h1 style={{ textAlign: 'left', margin: 0, fontSize: '1.8rem' }}>Panel Control Carrera</h1>
           <p style={{ color: 'var(--text-dim)' }}>
-            {userRole === 'superadmin' ? 'Super Admin - Acceso Total' : `Profesor - Clase: ${assignedCourse}`}
+            {userRole === 'superadmin' ? 'Super Admin - Desarrollador' : 
+             userRole === 'admin' ? 'Administrador de Gestión' : 
+             `Profesor - Clase: ${assignedCourse}`}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          {userRole === 'superadmin' && (
+          {(userRole === 'superadmin' || userRole === 'admin') && (
             <>
-              <button className="btn glass" onClick={() => setShowAssignments(true)} style={{ color: 'var(--accent)' }}>
-                <Users size={18} /> Asignaciones
-              </button>
+              {userRole === 'superadmin' && (
+                <button className="btn glass" onClick={() => setShowAssignments(true)} style={{ color: 'var(--accent)' }}>
+                  <Users size={18} /> Asignaciones
+                </button>
+              )}
               <button className="btn glass" onClick={handleResetDorsales} disabled={loading} style={{ color: '#f59e0b' }}>
                 <Trash2 size={18} /> Borrar Dorsales
               </button>
@@ -325,12 +352,46 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
                 ))}
               </tbody>
             </table>
+
+            {userRole === 'superadmin' && (
+              <div style={{ marginTop: 30, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 20 }}>
+                <h2 style={{ color: 'var(--accent)' }}>Gestión de Administradores (Dirección)</h2>
+                <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+                  <input 
+                    type="email" 
+                    placeholder="Email del administrador" 
+                    className="input" 
+                    value={newStaffEmail}
+                    onChange={e => setNewStaffEmail(e.target.value)}
+                  />
+                  <button className="btn btn-primary" onClick={handleAddStaff}>Añadir Admin</button>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Email</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staffAssignments.map(s => (
+                      <tr key={s.email}>
+                        <td>{s.email}</td>
+                        <td>
+                          <button className="btn" onClick={() => handleDeleteStaff(s.email)} style={{ color: '#ef4444' }}><Trash2 size={16}/></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <button className="btn glass" onClick={() => setShowAssignments(false)} style={{ marginTop: 20, width: '100%' }}>Cerrar</button>
           </div>
         </div>
       )}
 
-      {userRole === 'superadmin' && (
+      {(userRole === 'superadmin' || userRole === 'admin') && (
         <div style={{ display: 'flex', gap: 15, marginBottom: 20, flexWrap: 'wrap' }}>
           <div className="input-group" style={{ marginBottom: 0, width: '200px' }}>
             <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: 5, display: 'block' }}>Filtrar por Tipo</label>
@@ -374,7 +435,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Total a Recaudar</label>
         </div>
 
-        {userRole === 'superadmin' ? (
+        {userRole === 'superadmin' || userRole === 'admin' ? (
           <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid #f59e0b' }}>
             <Users size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
             <div style={{ color: '#f59e0b', fontSize: '2rem', fontWeight: 800 }}>{stats.totalAmpaDebt}€</div>
@@ -489,8 +550,8 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
 
           <div className="glass" style={{ padding: 35, marginBottom: 30 }}>
             <h3 style={{ marginBottom: 25, textAlign: 'center', fontWeight: 700 }}>Registrar Nueva Entrega a Dirección</h3>
-            <div className="grid" style={{ gridTemplateColumns: userRole === 'superadmin' ? '1.2fr 1fr 1fr 2fr 150px' : '1fr 1fr 2fr 150px', gap: 15 }}>
-              {userRole === 'superadmin' && (
+            <div className="grid" style={{ gridTemplateColumns: (userRole === 'superadmin' || userRole === 'admin') ? '1.2fr 1fr 1fr 2fr 150px' : '1fr 1fr 2fr 150px', gap: 15 }}>
+              {(userRole === 'superadmin' || userRole === 'admin') && (
                 <div className="input-group" style={{ marginBottom: 0 }}>
                   <label>Curso</label>
                   <select 
@@ -556,7 +617,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
                     <td>{new Date(rec.payment_date).toLocaleDateString()}</td>
                     <td style={{ fontWeight: 800, color: 'var(--accent)' }}>{rec.amount}€</td>
                     <td style={{ fontSize: '0.85rem', color: 'var(--text-dim)', fontStyle: 'italic' }}>{rec.observations || '-'}</td>
-                    {userRole === 'superadmin' && (
+                    {(userRole === 'superadmin' || userRole === 'admin') && (
                       <td style={{ textAlign: 'right' }}>
                         <button className="btn" style={{ padding: 5, color: '#ef4444', background: 'transparent' }} onClick={() => handleDeleteEconomicRecord(rec.id)}>
                           <Trash2 size={18} />
@@ -624,7 +685,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
                     />
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    {userRole === 'superadmin' && (
+                    {(userRole === 'superadmin' || userRole === 'admin') && (
                       <button className="btn" style={{ padding: 5, color: '#ef4444', background: 'transparent' }} onClick={() => handleDelete(reg.id)}>
                         <Trash2 size={18} />
                       </button>
