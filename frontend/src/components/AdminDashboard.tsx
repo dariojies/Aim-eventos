@@ -95,7 +95,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
             registrations: acc.registrations + regAmount,
             shirts: acc.shirts + shirtAmount,
             ampa: acc.ampa + (curr.ampa_members * 3),
-            due: acc.due + total + (role === 'superadmin' || role === 'admin' ? (curr.ampa_members * 3) : 0),
+            due: acc.due + total,
             paid: acc.paid + (curr.is_paid ? total : 0)
           };
         }, { registrations: 0, shirts: 0, ampa: 0, due: 0, paid: 0 });
@@ -104,7 +104,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           totalParticipants: totalP, 
           totalShirts: totalS, 
           totalDue: computed.due, 
-          totalPaid: computed.paid + (role === 'superadmin' || role === 'admin' ? ampaPaid : 0),
+          totalPaid: computed.paid,
           totalAmpaDebt: ampaDebt,
           breakdown: {
             registrations: computed.registrations,
