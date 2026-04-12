@@ -473,66 +473,67 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
                     No hay registros de entregas.
                   </td>
                 </tr>
-              </tbody>
+              )}
+            </tbody>
           </table>
         </div>
       ) : (
-
-      <div className="glass" style={{ padding: 20, overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Tipo/Curso</th>
-              <th>Apellidos y Nombre</th>
-              <th>Dorsales</th>
-              <th>Camisetas</th>
-              <th>Importe</th>
-              <th>Pagado</th>
-              <th style={{ textAlign: 'right' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredData.map(reg => (
-              <tr key={reg.id}>
-                <td>
-                  <span className={`badge badge-${reg.type}`}>
-                    {reg.type === 'alumno' ? reg.course : reg.type.toUpperCase()}
-                  </span>
-                </td>
-                <td style={{ fontWeight: 600 }}>{reg.full_name}</td>
-                <td>
-                  {reg.dorsal_start ? (
-                    <span style={{ fontFamily: 'monospace', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: 4 }}>
-                      {String(reg.dorsal_start).padStart(4, '0')}
-                      {reg.dorsal_end > reg.dorsal_start ? ` - ${String(reg.dorsal_end).padStart(4, '0')}` : ''}
-                    </span>
-                  ) : '-'}
-                </td>
-                <td style={{ fontSize: '0.8rem', color: 'var(--text-dim)', maxWidth: '200px' }}>
-                   {getShirtsLabel(reg)}
-                </td>
-                <td style={{ fontWeight: 700, color: 'var(--accent)' }}>
-                  {calculateAmount(reg)}€
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={reg.is_paid} 
-                    onChange={() => handleTogglePaid(reg.id)}
-                    style={{ width: 22, height: 22, cursor: 'pointer', accentColor: 'var(--primary)' }}
-                  />
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  {userRole === 'superadmin' && (
-                    <button className="btn" style={{ padding: 5, color: '#ef4444', background: 'transparent' }} onClick={() => handleDelete(reg.id)}>
-                      <Trash2 size={18} />
-                    </button>
-                  )}
-                </td>
+        <div className="glass" style={{ padding: 20, overflowX: 'auto' }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo/Curso</th>
+                <th>Apellidos y Nombre</th>
+                <th>Dorsales</th>
+                <th>Camisetas</th>
+                <th>Importe</th>
+                <th>Pagado</th>
+                <th style={{ textAlign: 'right' }}>Acciones</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredData.map(reg => (
+                <tr key={reg.id}>
+                  <td>
+                    <span className={`badge badge-${reg.type}`}>
+                      {reg.type === 'alumno' ? reg.course : reg.type.toUpperCase()}
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: 600 }}>{reg.full_name}</td>
+                  <td>
+                    {reg.dorsal_start ? (
+                      <span style={{ fontFamily: 'monospace', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: 4 }}>
+                        {String(reg.dorsal_start).padStart(4, '0')}
+                        {reg.dorsal_end > reg.dorsal_start ? ` - ${String(reg.dorsal_end).padStart(4, '0')}` : ''}
+                      </span>
+                    ) : '-'}
+                  </td>
+                  <td style={{ fontSize: '0.8rem', color: 'var(--text-dim)', maxWidth: '200px' }}>
+                     {getShirtsLabel(reg)}
+                  </td>
+                  <td style={{ fontWeight: 700, color: 'var(--accent)' }}>
+                    {calculateAmount(reg)}€
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={reg.is_paid} 
+                      onChange={() => handleTogglePaid(reg.id)}
+                      style={{ width: 22, height: 22, cursor: 'pointer', accentColor: 'var(--primary)' }}
+                    />
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    {userRole === 'superadmin' && (
+                      <button className="btn" style={{ padding: 5, color: '#ef4444', background: 'transparent' }} onClick={() => handleDelete(reg.id)}>
+                        <Trash2 size={18} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
