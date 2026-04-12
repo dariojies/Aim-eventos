@@ -82,7 +82,6 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         }, 0);
 
         const ampaDebt = registrations.reduce((acc: number, curr: any) => acc + (curr.ampa_members * 3), 0);
-        const ampaPaid = econRecords.filter((r: any) => r.course === 'AMPA').reduce((acc: number, curr: any) => acc + parseFloat(curr.amount), 0);
 
         const computed = registrations.reduce((acc: any, curr: any) => {
           const regAmount = (curr.total_participants - curr.ampa_members) * 3;
