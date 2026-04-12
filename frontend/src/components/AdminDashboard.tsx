@@ -395,7 +395,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         </div>
       </div>
 
-      <div className="flex" style={{ gap: 20, marginBottom: 30 }}>
+      <div style={{ display: 'flex', flexDirection: 'row', gap: 20, marginBottom: 30, width: '100%' }}>
         <button 
           className={`btn ${activeTab === 'registrations' ? 'btn-primary' : 'glass'}`} 
           onClick={() => setActiveTab('registrations')}
