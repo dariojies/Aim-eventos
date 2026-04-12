@@ -10,6 +10,9 @@ const session = require('express-session');
 const { pool, initDB } = require('./db');
 const pgSession = require('connect-pg-simple')(session);
 
+// Initialize DB as soon as possible
+initDB();
+
 const SUPER_ADMINS = ['jmmarinborrego@gmail.com', 'dario.jimenez@cevhuertadelacruzesur.es'];
 
 const app = express();
@@ -39,7 +42,7 @@ app.use(passport.session());
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-initDB();
+
 
 // Course sorting order (Alumnos by course -> Profesores -> Externos)
 const COURSE_ORDER = [
