@@ -73,7 +73,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           registrations: acc.registrations + regAmount,
           shirts: acc.shirts + shirtAmount,
           ampa: acc.ampa + (curr.ampa_members * 3),
-          due: acc.due + total + (curr.ampa_members * 3),
+          due: acc.due + total + (userRole === 'superadmin' ? (curr.ampa_members * 3) : 0),
           paid: acc.paid + (curr.is_paid ? total : 0)
         };
       }, { registrations: 0, shirts: 0, ampa: 0, due: 0, paid: 0 });
@@ -82,7 +82,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         totalParticipants: totalP, 
         totalShirts: totalS, 
         totalDue: computed.due, 
-        totalPaid: computed.paid + ampaPaid,
+        totalPaid: computed.paid + (userRole === 'superadmin' ? ampaPaid : 0),
         totalAmpaDebt: ampaDebt,
         breakdown: {
           registrations: computed.registrations,
@@ -366,19 +366,27 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid var(--accent)' }}>
           <Euro size={24} color="var(--accent)" style={{ marginBottom: 10 }} />
           <div style={{ color: 'var(--accent)', fontSize: '2rem', fontWeight: 800 }}>{stats.totalDue}€</div>
-          <div style={{ fontSize: '0.7rem', opacity: 0.7, marginTop: 5 }}>
-            {stats.breakdown.registrations}€ Insc. + {stats.breakdown.shirts}€ Camis. + {stats.breakdown.ampa}€ AMPA
+          <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Total a Recaudar</label>
+        </div>
+
+        {userRole === 'superadmin' ? (
+          <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid #f59e0b' }}>
+            <Users size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
+            <div style={{ color: '#f59e0b', fontSize: '2rem', fontWeight: 800 }}>{stats.totalAmpaDebt}€</div>
+            <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Deuda AMPA</label>
           </div>
-        </div>
-        <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid #f59e0b' }}>
-          <Users size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
-          <div style={{ color: '#f59e0b', fontSize: '2rem', fontWeight: 800 }}>{stats.totalAmpaDebt}€</div>
-          <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Deuda AMPA</label>
-        </div>
+        ) : (
+          <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid #ef4444' }}>
+            <Wallet size={24} color="#ef4444" style={{ marginBottom: 10 }} />
+            <div style={{ color: '#ef4444', fontSize: '2rem', fontWeight: 800 }}>{(stats.totalDue - stats.totalPaid).toFixed(2)}€</div>
+            <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Falta por Recaudar</label>
+          </div>
+        )}
+
         <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid #10b981' }}>
           <Wallet size={24} color="#10b981" style={{ marginBottom: 10 }} />
           <div style={{ color: '#10b981', fontSize: '2rem', fontWeight: 800 }}>{stats.totalPaid}€</div>
-          <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Total Recaudado</label>
+          <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Ya Recaudado</label>
         </div>
       </div>
 
