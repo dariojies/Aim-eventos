@@ -12,13 +12,17 @@ const initDB = async () => {
     DO $$ 
     DECLARE
       row_count int;
+      old_exists boolean;
+      new_exists boolean;
     BEGIN 
       -- 1. Gestión de economic_records -> race_economic_records
-      IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'economic_records') THEN
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_economic_records') THEN
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'economic_records') INTO old_exists;
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_economic_records') INTO new_exists;
+      
+      IF old_exists THEN
+        IF new_exists THEN
           EXECUTE 'SELECT count(*) FROM race_economic_records' INTO row_count;
           IF row_count = 0 THEN
-            -- Explicit column mapping
             EXECUTE 'INSERT INTO race_economic_records (course, amount, payment_date, observations) SELECT course, amount, payment_date, observations FROM economic_records';
             EXECUTE 'DROP TABLE economic_records';
           END IF;
@@ -28,11 +32,13 @@ const initDB = async () => {
       END IF;
 
       -- 2. Gestión de teacher_assignments -> race_teacher_assignments
-      IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'teacher_assignments') THEN
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_teacher_assignments') THEN
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'teacher_assignments') INTO old_exists;
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_teacher_assignments') INTO new_exists;
+
+      IF old_exists THEN
+        IF new_exists THEN
           EXECUTE 'SELECT count(*) FROM race_teacher_assignments' INTO row_count;
           IF row_count = 0 THEN
-            -- Handle rename from 'course' to 'assigned_course' during transfer
             IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'teacher_assignments' AND column_name = 'course') THEN
               EXECUTE 'INSERT INTO race_teacher_assignments (email, assigned_course) SELECT email, course FROM teacher_assignments';
             ELSE
@@ -42,7 +48,6 @@ const initDB = async () => {
           END IF;
         ELSE
           ALTER TABLE teacher_assignments RENAME TO race_teacher_assignments;
-          -- Also rename the column if it was 'course'
           IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'race_teacher_assignments' AND column_name = 'course') THEN
             EXECUTE 'ALTER TABLE race_teacher_assignments RENAME COLUMN course TO assigned_course';
           END IF;
@@ -50,11 +55,19 @@ const initDB = async () => {
       END IF;
 
       -- 3. Gestión de admin_assignments -> race_admin_assignments
-      IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'admin_assignments') THEN
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_admin_assignments') THEN
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'admin_assignments') INTO old_exists;
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_admin_assignments') INTO new_exists;
+
+      IF old_exists THEN
+        IF new_exists THEN
           EXECUTE 'SELECT count(*) FROM race_admin_assignments' INTO row_count;
           IF row_count = 0 THEN
-            EXECUTE 'INSERT INTO race_admin_assignments (email) SELECT email FROM admin_assignments';
+            -- Check if old table has created_at
+            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_assignments' AND column_name = 'created_at') THEN
+               EXECUTE 'INSERT INTO race_admin_assignments (email, created_at) SELECT email, created_at FROM admin_assignments';
+            ELSE
+               EXECUTE 'INSERT INTO race_admin_assignments (email) SELECT email FROM admin_assignments';
+            END IF;
             EXECUTE 'DROP TABLE admin_assignments';
           END IF;
         ELSE
@@ -63,8 +76,11 @@ const initDB = async () => {
       END IF;
 
       -- 4. Gestión de session -> race_sessions
-      IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'session') THEN
-        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_sessions') THEN
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'session') INTO old_exists;
+      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_sessions') INTO new_exists;
+
+      IF old_exists THEN
+        IF new_exists THEN
           EXECUTE 'SELECT count(*) FROM race_sessions' INTO row_count;
           IF row_count = 0 THEN
             EXECUTE 'INSERT INTO race_sessions (sid, sess, expire) SELECT sid, sess, expire FROM session';
