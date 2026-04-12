@@ -378,7 +378,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid #f59e0b' }}>
             <Users size={24} color="#f59e0b" style={{ marginBottom: 10 }} />
             <div style={{ color: '#f59e0b', fontSize: '2rem', fontWeight: 800 }}>{stats.totalAmpaDebt}€</div>
-            <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Deuda AMPA</label>
+            <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Importe AMPA</label>
           </div>
         ) : (
           <div className="glass" style={{ padding: 25, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderBottom: '4px solid #ef4444' }}>
@@ -395,13 +395,20 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 25 }}>
+      <div className="flex" style={{ gap: 20, marginBottom: 30 }}>
         <button 
           className={`btn ${activeTab === 'registrations' ? 'btn-primary' : 'glass'}`} 
           onClick={() => setActiveTab('registrations')}
           style={{ flex: 1 }}
         >
           Inscripciones
+        </button>
+        <button 
+          className={`btn ${activeTab === 'economics' ? 'btn-primary' : 'glass'}`} 
+          onClick={() => setActiveTab('economics')}
+          style={{ flex: 1 }}
+        >
+          Gestión Económica
         </button>
         <button 
           className={`btn ${activeTab === 'shirts' ? 'btn-primary' : 'glass'}`} 
