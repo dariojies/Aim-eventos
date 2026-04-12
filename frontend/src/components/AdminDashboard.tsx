@@ -113,19 +113,6 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
           }
         });
       }
-
-      setStats({ 
-        totalParticipants: totalP, 
-        totalShirts: totalS, 
-        totalDue: computed.due, 
-        totalPaid: computed.paid + (role === 'superadmin' || role === 'admin' ? ampaPaid : 0),
-        totalAmpaDebt: ampaDebt,
-        breakdown: {
-          registrations: computed.registrations,
-          shirts: computed.shirts,
-          ampa: computed.ampa
-        }
-      });
     } catch (err) {
       console.error(err);
     } finally {
