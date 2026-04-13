@@ -40,8 +40,21 @@ export default function RegistrationForm({ apiBase, preselectCourse }: Props) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    // Sanitize numeric fields before sending: empty strings should be 0 or 1
+    const sanitizedData = {
+      ...formData,
+      total_participants: formData.total_participants === ('' as any) ? 1 : Number(formData.total_participants),
+      ampa_members: formData.ampa_members === ('' as any) ? 0 : Number(formData.ampa_members),
+      shirts: Object.keys(formData.shirts).reduce((acc, size) => {
+        const val = (formData.shirts as any)[size];
+        acc[size] = val === '' ? 0 : Number(val);
+        return acc;
+      }, {} as any)
+    };
+
     try {
-      await axios.post(`${apiBase}/api/register`, formData);
+      await axios.post(`${apiBase}/api/register`, sanitizedData);
       setSubmitted(true);
     } catch (err) {
       alert('Error en el registro. Por favor, inténtalo de nuevo.');
@@ -51,8 +64,9 @@ export default function RegistrationForm({ apiBase, preselectCourse }: Props) {
   };
 
   const handleShirtChange = (size: string, value: string) => {
-    const num = parseInt(value) || 0;
-    setFormData({ ...formData, shirts: { ...formData.shirts, [size]: num } });
+    // Allow empty string for clearing inputs
+    const val = value === '' ? '' : parseInt(value);
+    setFormData({ ...formData, shirts: { ...formData.shirts, [size]: val } });
   };
 
   if (submitted) {
@@ -148,7 +162,7 @@ export default function RegistrationForm({ apiBase, preselectCourse }: Props) {
               min="1" 
               required
               value={formData.total_participants}
-              onChange={e => setFormData({ ...formData, total_participants: parseInt(e.target.value) || 1 })}
+              onChange={e => setFormData({ ...formData, total_participants: e.target.value === '' ? '' : parseInt(e.target.value) as any })}
             />
           </div>
           <div className="input-group">
@@ -156,9 +170,9 @@ export default function RegistrationForm({ apiBase, preselectCourse }: Props) {
             <input 
               type="number" 
               min="0" 
-              max={formData.total_participants}
+              max={formData.total_participants === ('' as any) ? undefined : formData.total_participants}
               value={formData.ampa_members}
-              onChange={e => setFormData({ ...formData, ampa_members: parseInt(e.target.value) || 0 })}
+              onChange={e => setFormData({ ...formData, ampa_members: e.target.value === '' ? '' : parseInt(e.target.value) as any })}
             />
           </div>
         </div>
