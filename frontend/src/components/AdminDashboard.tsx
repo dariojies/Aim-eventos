@@ -315,21 +315,6 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
           </button>
         </div>
       </header>
-        <div className="tabs glass" style={{ display: 'flex', gap: 10, padding: 10, marginBottom: 30, overflowX: 'auto' }}>
-          <button className={`btn ${activeTab === 'registrations' ? 'btn-primary' : 'glass'}`} onClick={() => setActiveTab('registrations')}>
-            <Ticket size={18} /> Participantes
-          </button>
-          <button className={`btn ${activeTab === 'shirts' ? 'btn-primary' : 'glass'}`} onClick={() => setActiveTab('shirts')}>
-            <Palette size={18} /> Camisetas
-          </button>
-          <button className={`btn ${activeTab === 'economics' ? 'btn-primary' : 'glass'}`} onClick={() => setActiveTab('economics')}>
-            <Euro size={18} /> Economía
-          </button>
-          <button className={`btn ${activeTab === 'settings' ? 'btn-primary' : 'glass'}`} onClick={() => setActiveTab('settings')}>
-            <Save size={18} /> Ajustes
-          </button>
-        </div>
-
       {showAssignments && (
         <div className="glass modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="glass" style={{ width: '90%', maxWidth: '700px', padding: 30, maxHeight: '80vh', overflowY: 'auto' }}>

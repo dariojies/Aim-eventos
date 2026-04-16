@@ -449,6 +449,21 @@ app.delete('/api/admin/staff/:email', isAdmin, async (req, res) => {
         res.status(500).json({ error: 'Failed' });
     }
 });
+
+app.put('/api/admin/event-config', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'admin') {
+        return res.status(403).json({ error: 'Admin privileges required' });
+    }
+    try {
+        const { config } = req.body;
+        await pool.query('UPDATE race_events SET config = $1 WHERE id = $2', [config, req.eventId]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update config' });
+    }
+});
+
 // Legacy routes removed (consolidated in staff routes above)
 
 // Economic Management Routes
