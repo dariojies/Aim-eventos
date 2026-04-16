@@ -260,6 +260,7 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
             )}
           </button>
         </form>
+        </div>
       </div>
 
       <div 
