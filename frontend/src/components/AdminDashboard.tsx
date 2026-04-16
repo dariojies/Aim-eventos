@@ -362,7 +362,7 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
                 {staffList.map(s => (
                   <tr key={s.email}>
                     <td>{s.email}</td>
-                    <td>{s.role.toUpperCase()}</td>
+                    <td style={{ fontWeight: 600 }}>{s.role === 'teacher' ? 'PROFESOR/A' : s.role === 'admin' ? 'ADMINISTRADOR/A' : s.role.toUpperCase()}</td>
                     <td>{s.assigned_course || '-'}</td>
                     <td>
                       <button className="btn" onClick={() => handleDeleteStaff(s.email)} style={{ color: '#ef4444' }}><Trash2 size={16}/></button>

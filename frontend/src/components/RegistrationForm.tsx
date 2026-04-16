@@ -92,16 +92,33 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
         <ArrowLeft size={18} /> Volver
       </button>
 
-      <div className="card glass animate" style={{ position: 'relative' }}>
+      <div className="card glass animate" style={{ position: 'relative', overflow: 'hidden' }}>
         {event.config?.assets?.banner_url && (
-          <img 
-            src={event.config.assets.banner_url} 
-            alt="Cartel del evento" 
-            style={{ width: '100%', borderRadius: 16, marginBottom: 30, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} 
-          />
+          <div style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            backgroundImage: `url(${event.config.assets.banner_url})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: 0.12,
+            zIndex: 0,
+            pointerEvents: 'none'
+          }} />
         )}
-        <h1>{event.name}</h1>
-        <form onSubmit={handleSubmit}>
+        
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ textAlign: 'center', marginBottom: 30 }}>
+            {event.config?.assets?.logo_url && (
+              <img 
+                src={event.config.assets.logo_url} 
+                alt="Logo del evento" 
+                style={{ maxHeight: 110, maxWidth: '100%', objectFit: 'contain', marginBottom: 15 }} 
+              />
+            )}
+            <h1 style={{ marginBottom: 0 }}>{event.name}</h1>
+          </div>
+
+          <form onSubmit={handleSubmit}>
           <div className="input-group">
             <label>Soy...</label>
             <select 
