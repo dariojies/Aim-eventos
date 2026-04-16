@@ -1,70 +1,110 @@
-import { useState, useEffect, type MouseEvent } from 'react';
+import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate } from 'react-router-dom';
 import axios from 'axios';
 import RegistrationForm from './components/RegistrationForm';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
+import EventSelector from './components/EventSelector';
+import GlobalAdminDashboard from './components/GlobalAdminDashboard';
 
 axios.defaults.withCredentials = true;
 const API_BASE = import.meta.env.MODE === 'development' ? 'http://localhost:8080' : '';
 
-import { Shield, Home } from 'lucide-react';
-
-export default function App() {
-  const [view, setView] = useState<'public' | 'admin-login' | 'admin-dashboard'>('public');
-  const [authStatus, setAuthStatus] = useState<boolean | null>(null);
-  const [assignedCourse, setAssignedCourse] = useState<string | null>(null);
+function GlobalAdminLoader() {
+  const [auth, setAuth] = useState<{ authenticated: boolean; role: string } | null>(null);
 
   useEffect(() => {
-    // Check if user is already logged in as admin
     axios.get(`${API_BASE}/api/auth/status`)
-      .then(res => {
-        setAuthStatus(res.data.authenticated);
-        setAssignedCourse(res.data.assignedCourse);
-        if (res.data.authenticated && window.location.pathname === '/admin') {
-          setView('admin-dashboard');
-        }
-      })
-      .catch(() => setAuthStatus(false));
+      .then(res => setAuth({ authenticated: res.data.authenticated, role: res.data.role }))
+      .catch(() => setAuth({ authenticated: false, role: 'none' }));
   }, []);
 
-  // Handle navigation and auth status
+  if (!auth) return <div className="loading-screen"><div className="loader"></div></div>;
+
+  if (!auth.authenticated || auth.role !== 'superadmin') {
+    return <AdminLogin apiBase={API_BASE} />;
+  }
+
+  return <GlobalAdminDashboard apiBase={API_BASE} onLogout={() => window.location.reload()} />;
+}
+
+function EventLoader() {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const [eventData, setEventData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const handlePathChange = () => {
-      const path = window.location.pathname;
-      if (path === '/admin') {
-        if (authStatus === true) setView('admin-dashboard');
-        else setView('admin-login');
-      } else {
-        setView('public');
-      }
-    };
-
-    handlePathChange();
-    window.addEventListener('popstate', handlePathChange);
-    return () => window.removeEventListener('popstate', handlePathChange);
-  }, [authStatus]);
-
-  const toggleAdmin = (e: MouseEvent) => {
-    e.preventDefault();
-    if (view === 'public') {
-      window.history.pushState({}, '', '/admin');
-      if (authStatus === true) setView('admin-dashboard');
-      else setView('admin-login');
-    } else {
-      window.history.pushState({}, '', '/');
-      setView('public');
+    if (slug) {
+      axios.get(`${API_BASE}/api/events/${slug}`)
+        .then(res => {
+          setEventData(res.data);
+          // Apply dynamic theming
+          if (res.data.config?.colors) {
+            const root = document.documentElement;
+            const colors = res.data.config.colors;
+            if (colors.primary_gradient) root.style.setProperty('--primary-gradient', colors.primary_gradient);
+            if (colors.accent) root.style.setProperty('--primary', colors.accent); // Use accent as primary color
+          }
+        })
+        .catch(() => navigate('/'))
+        .finally(() => setLoading(false));
     }
-  };
+  }, [slug, navigate]);
 
+  if (loading) return <div className="loading-screen"><div className="loader"></div></div>;
+  if (!eventData) return <Navigate to="/" />;
+
+  return <RegistrationForm apiBase={API_BASE} event={eventData} />;
+}
+
+function AdminLoader() {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const [eventData, setEventData] = useState<any>(null);
+  const [auth, setAuth] = useState<{ authenticated: boolean; role: string } | null>(null);
+
+  useEffect(() => {
+    if (slug) {
+      axios.get(`${API_BASE}/api/events/${slug}`).then(res => setEventData(res.data));
+    }
+    
+    // Check auth status with event context
+    axios.get(`${API_BASE}/api/auth/status`, { params: { eventId: slug } })
+      .then(res => setAuth({ authenticated: res.data.authenticated, role: res.data.role }))
+      .catch(() => setAuth({ authenticated: false, role: 'none' }));
+  }, [slug]);
+
+  if (!auth) return <div className="loading-screen"><div className="loader"></div></div>;
+
+  if (!auth.authenticated || auth.role === 'unauthorized') {
+    return <AdminLogin apiBase={API_BASE} />;
+  }
+
+  return <AdminDashboard apiBase={API_BASE} event={eventData} onLogout={() => window.location.reload()} />;
+}
+
+export default function App() {
   return (
-    <div className="app">
-      {view === 'public' && <RegistrationForm apiBase={API_BASE} preselectCourse={assignedCourse} />}
-      {view === 'admin-login' && <AdminLogin apiBase={API_BASE} />}
-      {view === 'admin-dashboard' && <AdminDashboard apiBase={API_BASE} onLogout={() => setAuthStatus(false)} />}
-      
-      <button className="fab-admin" onClick={toggleAdmin} title={view === 'public' ? 'Admin' : 'Inicio'}>
-        {view === 'public' ? <Shield size={28} /> : <Home size={28} />}
-      </button>
-    </div>
+    <BrowserRouter>
+      <div className="app">
+        <Routes>
+          <Route path="/" element={
+            <EventSelector 
+              apiBase={API_BASE} 
+              onSelect={(event) => window.location.href = `/${event.slug}`}
+              onAdminLogin={() => window.location.href = '/admin-global'} 
+            />
+          } />
+          
+          <Route path="/admin-global" element={<GlobalAdminLoader />} />
+          <Route path="/:slug" element={<EventLoader />} />
+          <Route path="/:slug/admin" element={<AdminLoader />} />
+          
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </div>
+    </BrowserRouter>
   );
 }

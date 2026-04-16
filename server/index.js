@@ -14,12 +14,62 @@ const pgSession = require('connect-pg-simple')(session);
 
 const SUPER_ADMINS = ['jmmarinborrego@gmail.com', 'dario.jimenez@cevhuertadelacruzesur.es'];
 
+// Organization Detection Middleware
+const orgMiddleware = async (req, res, next) => {
+    const host = req.headers.host || '';
+    // Global management domain
+    if (host.includes('eventos.aimeducation.es') || host.includes('localhost')) {
+        req.isGlobal = true;
+        return next();
+    }
+
+    // Check if it's a specific organization subdomain
+    try {
+        const result = await pool.query('SELECT * FROM race_organizations');
+        const org = result.rows.find(o => host.includes(o.subdomain));
+        if (org) {
+            req.org = org;
+            req.isGlobal = false;
+        }
+    } catch (err) {
+        console.error('Org detection failed:', err);
+    }
+    next();
+};
+
 const app = express();
 app.set('trust proxy', 1); // Trust Heroku proxy
 const PORT = process.env.PORT || 8080;
 
+// Dynamic CORS configuration to support multiple subdomains
 const FRONTEND_URL = process.env.FRONTEND_URL || '';
-app.use(cors({ origin: FRONTEND_URL || true, credentials: true }));
+const ENV_ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+
+const WHITESPACE_REGEX = /\s+/;
+const ALLOWED_ORIGINS = [
+    FRONTEND_URL,
+    'https://eventos.huertadelacruz.escuelavicencianaesur.es',
+    'https://eventos.aimeducation.es',
+    'http://localhost:5173',
+    ...ENV_ALLOWED_ORIGINS
+].filter(Boolean);
+
+app.use(cors({ 
+    origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        
+        const isAllowed = ALLOWED_ORIGINS.some(allowed => origin.toLowerCase() === allowed.toLowerCase());
+        
+        if (isAllowed || process.env.NODE_ENV !== 'production') {
+            callback(null, true);
+        } else {
+            console.warn(`CORS blocked for origin: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    }, 
+    credentials: true 
+}));
 app.use(express.json());
 app.use(session({
     store: new pgSession({
@@ -37,6 +87,7 @@ app.use(session({
 
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(orgMiddleware);
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
@@ -57,18 +108,33 @@ passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID || 'dummy',
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy',
     callbackURL: "/auth/google/callback",
-    proxy: true
-}, (accessToken, refreshToken, profile, done) => {
+    proxy: true,
+    passReqToCallback: true
+}, (req, accessToken, refreshToken, profile, done) => {
     const email = profile.emails[0].value.toLowerCase();
     const domain = email.split('@')[1];
-    const allowedDomain = (process.env.AUTH_DOMAIN || '').toLowerCase();
-    const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
-
-    if (domain === allowedDomain || email === adminEmail) {
+    
+    // 1. Always allow SuperAdmins
+    if (SUPER_ADMINS.includes(email)) {
         return done(null, profile);
-    } else {
-        return done(null, false, { message: 'Unauthorized domain' });
     }
+
+    // 2. AimEducation Context (Global)
+    if (req.isGlobal) {
+        const allowedDomains = ['aimeducation.es', 'allegro.in-ma.es'];
+        if (allowedDomains.includes(domain)) {
+            return done(null, profile);
+        }
+        return done(null, false, { message: 'Dominio no permitido para el panel global' });
+    }
+
+    // 3. Organization Context (Default/Huerta)
+    const allowedDomain = (process.env.AUTH_DOMAIN || '').toLowerCase();
+    if (domain === allowedDomain) {
+        return done(null, profile);
+    }
+
+    return done(null, false, { message: 'Dominio no autorizado para esta organización' });
 }));
 
 passport.serializeUser((user, done) => done(null, user));
@@ -76,38 +142,43 @@ passport.deserializeUser((user, done) => done(null, user));
 
 // Auth Routes
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: FRONTEND_URL || '/' }), (req, res) => {
-    res.redirect(`${FRONTEND_URL || ''}/admin`);
+app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/' }), (req, res) => {
+    const host = req.get('host');
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    // Redirect to the same host they logged in from
+    res.redirect(`${protocol}://${host}/`);
 });
 
 app.get('/api/auth/status', async (req, res) => {
     if (req.isAuthenticated()) {
         const email = req.user.emails[0].value.toLowerCase();
+        const { eventId } = req.query; // Optional event context
         
-        // 1. Check if hardcoded SuperAdmin
+        // 1. SuperAdmin (Global)
         if (SUPER_ADMINS.includes(email)) {
             return res.json({ authenticated: true, user: req.user, role: 'superadmin' });
         }
 
-        // 2. Check if Dynamic Admin (Staff/Direccion)
-        const adminCheck = await pool.query('SELECT * FROM race_admin_assignments WHERE email = $1', [email]);
-        if (adminCheck.rows.length > 0) {
-            return res.json({ authenticated: true, user: req.user, role: 'admin' });
+        if (!eventId) {
+            return res.json({ authenticated: true, user: req.user, role: 'authorized_user' });
         }
 
-        // 3. Check if Teacher/Tutor
-        const teacherCheck = await pool.query('SELECT assigned_course FROM race_teacher_assignments WHERE email = $1', [email]);
-        let assignedCourse = null;
-        if (teacherCheck.rows.length > 0) {
-            assignedCourse = teacherCheck.rows[0].assigned_course;
+        // 2. Event-specific roles
+        const staffRes = await pool.query(
+            'SELECT role, assigned_course FROM race_staff WHERE event_id = $1 AND email = $2',
+            [eventId, email]
+        );
+
+        if (staffRes.rows.length > 0) {
+            return res.json({ 
+                authenticated: true, 
+                user: req.user, 
+                role: staffRes.rows[0].role,
+                assignedCourse: staffRes.rows[0].assigned_course
+            });
         }
 
-        res.json({ 
-            authenticated: true, 
-            user: req.user,
-            role: assignedCourse ? 'teacher' : 'unauthorized',
-            assignedCourse
-        });
+        res.json({ authenticated: true, user: req.user, role: 'unauthorized' });
     } else {
         res.json({ authenticated: false });
     }
@@ -125,44 +196,113 @@ const isAdmin = async (req, res, next) => {
     if (!req.isAuthenticated()) return res.status(401).json({ error: 'Unauthorized' });
     
     const email = req.user.emails[0].value.toLowerCase();
-    
+    const eventId = req.headers['x-event-id'] || req.query.eventId;
+
     // Check SuperAdmin (Code)
     if (SUPER_ADMINS.includes(email)) {
         req.userRole = 'superadmin';
         return next();
     }
 
-    // Check Admin (DB)
-    const adminCheck = await pool.query('SELECT * FROM race_admin_assignments WHERE email = $1', [email]);
-    if (adminCheck.rows.length > 0) {
-        req.userRole = 'admin';
+    if (!eventId) return res.status(400).json({ error: 'Event ID required' });
+
+    // Check Staff (DB) - Consolidated Table
+    const staffCheck = await pool.query('SELECT * FROM race_staff WHERE event_id = $1 AND email = $2', [eventId, email]);
+    if (staffCheck.rows.length > 0) {
+        req.userRole = staffCheck.rows[0].role;
+        req.assignedCourse = staffCheck.rows[0].assigned_course;
+        req.eventId = eventId;
         return next();
     }
 
-    // Check Teacher (DB)
-    const teacherCheck = await pool.query('SELECT assigned_course FROM race_teacher_assignments WHERE email = $1', [email]);
-    if (teacherCheck.rows.length > 0) {
-        req.userRole = 'teacher';
-        req.assignedCourse = teacherCheck.rows[0].assigned_course;
-        return next();
-    }
-
-    res.status(403).json({ error: 'Forbidden: No assignment found' });
+    res.status(403).json({ error: 'Forbidden: No assignment found for this event' });
 };
+
+// Organization & Event Routes
+app.get('/api/organizations', async (req, res) => {
+    const email = req.isAuthenticated() ? req.user.emails[0].value.toLowerCase() : '';
+    if (!SUPER_ADMINS.includes(email)) return res.status(403).json({ error: 'SuperAdmin only' });
+    try {
+        const result = await pool.query('SELECT * FROM race_organizations ORDER BY name ASC');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
+app.get('/api/organizations/current', (req, res) => {
+    res.json(req.org || { name: 'AIM Education', isGlobal: true });
+});
+
+app.get('/api/events', async (req, res) => {
+    try {
+        let query = 'SELECT e.*, o.name as org_name FROM race_events e JOIN race_organizations o ON e.org_id = o.id';
+        let values = [];
+        if (req.org) {
+            query += ' WHERE org_id = $1';
+            values.push(req.org.id);
+        }
+        query += ' ORDER BY created_at DESC';
+        const result = await pool.query(query, values);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch events' });
+    }
+});
+
+app.get('/api/events/:slug', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM race_events WHERE slug = $1', [req.params.slug]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
+app.post('/api/events', async (req, res) => {
+    const email = req.isAuthenticated() ? req.user.emails[0].value.toLowerCase() : '';
+    if (!SUPER_ADMINS.includes(email)) return res.status(403).json({ error: 'SuperAdmin only' });
+
+    const { org_id, name, slug, config } = req.body;
+    try {
+        const result = await pool.query(
+            'INSERT INTO race_events (org_id, name, slug, config) VALUES ($1, $2, $3, $4) RETURNING *',
+            [org_id, name, slug, config || {}]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed' });
+    }
+});
+
+app.put('/api/admin/event-config', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'admin') {
+        return res.status(403).json({ error: 'Only admins or superadmins can update configuration' });
+    }
+    const { config } = req.body;
+    try {
+        await pool.query('UPDATE race_events SET config = $1 WHERE id = $2', [config, req.eventId]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update config' });
+    }
+});
 
 // Public Routes
 app.post('/api/register', async (req, res) => {
-    const { type, course, full_name, total_participants, ampa_members, wants_shirts, shirts, observations, email, phone } = req.body;
+    const { event_id, type, course, full_name, total_participants, ampa_members, wants_shirts, shirts, observations, email, phone } = req.body;
+    if (!event_id) return res.status(400).json({ error: 'Event ID required' });
     try {
         const query = `
             INSERT INTO race_registrations (
-                type, course, full_name, total_participants, ampa_members, wants_shirts,
+                event_id, type, course, full_name, total_participants, ampa_members, wants_shirts,
                 shirt_4y, shirt_8y, shirt_12y, shirt_16y, shirt_s, shirt_m, shirt_l, shirt_xl, shirt_xxl, 
                 observations, external_email, external_phone
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *`;
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING *`;
 
         const values = [
-            type, course || null, full_name, total_participants || 1, ampa_members || 0, wants_shirts || false,
+            event_id, type, course || null, full_name, total_participants || 1, ampa_members || 0, wants_shirts || false,
             shirts['4y'] || 0, shirts['8y'] || 0, shirts['12y'] || 0, shirts['16y'] || 0,
             shirts['s'] || 0, shirts['m'] || 0, shirts['l'] || 0, shirts['xl'] || 0, shirts['xxl'] || 0,
             observations || null, email || null, phone || null
@@ -179,11 +319,11 @@ app.post('/api/register', async (req, res) => {
 // Admin Routes
 app.get('/api/admin/registrations', isAdmin, async (req, res) => {
     try {
-        let query = 'SELECT * FROM race_registrations';
-        let values = [];
+        let query = 'SELECT * FROM race_registrations WHERE event_id = $1';
+        let values = [req.eventId];
 
         if (req.userRole === 'teacher') {
-            query += ' WHERE course = $1';
+            query += ' AND course = $2';
             values.push(req.assignedCourse);
         }
 
@@ -198,11 +338,11 @@ app.get('/api/admin/registrations', isAdmin, async (req, res) => {
 app.post('/api/admin/generate-dorsales', isAdmin, async (req, res) => {
     try {
         // Find current max dorsal to continue from there
-        const maxRes = await pool.query('SELECT MAX(dorsal_end) as max_dorsal FROM race_registrations');
+        const maxRes = await pool.query('SELECT MAX(dorsal_end) as max_dorsal FROM race_registrations WHERE event_id = $1', [req.eventId]);
         let currentDorsal = (maxRes.rows[0].max_dorsal || 0) + 1;
 
         // Get only paid registrations that DON'T have a dorsal yet
-        const result = await pool.query('SELECT * FROM race_registrations WHERE is_paid = true AND dorsal_start IS NULL');
+        const result = await pool.query('SELECT * FROM race_registrations WHERE event_id = $1 AND is_paid = true AND dorsal_start IS NULL', [req.eventId]);
         const newRegistrations = result.rows;
 
         if (newRegistrations.length === 0) {
@@ -238,7 +378,7 @@ app.post('/api/admin/generate-dorsales', isAdmin, async (req, res) => {
 app.post('/api/admin/reset-dorsales', isAdmin, async (req, res) => {
     if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
     try {
-        await pool.query('UPDATE race_registrations SET dorsal_start = NULL, dorsal_end = NULL');
+        await pool.query('UPDATE race_registrations SET dorsal_start = NULL, dorsal_end = NULL WHERE event_id = $1', [req.eventId]);
         res.json({ success: true });
     } catch (err) {
         console.error(err);
@@ -273,45 +413,10 @@ app.delete('/api/admin/registrations/:id', isAdmin, async (req, res) => {
     }
 });
 
-// Assignment routes (Super Admin Only)
-app.get('/api/admin/assignments', isAdmin, async (req, res) => {
-    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Unauthorized' });
-    try {
-        const result = await pool.query('SELECT * FROM race_teacher_assignments ORDER BY email ASC');
-        res.json(result.rows);
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch assignments' });
-    }
-});
-
-app.post('/api/admin/assignments', isAdmin, async (req, res) => {
-    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Unauthorized' });
-    const { email, course } = req.body;
-    try {
-        await pool.query(
-            'INSERT INTO race_teacher_assignments (email, assigned_course) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET assigned_course = EXCLUDED.assigned_course',
-            [email.toLowerCase(), course]
-        );
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to save assignment' });
-    }
-});
-
-app.delete('/api/admin/assignments/:email', isAdmin, async (req, res) => {
-    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Unauthorized' });
-    try {
-        await pool.query('DELETE FROM race_teacher_assignments WHERE email = $1', [req.params.email.toLowerCase()]);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ error: 'Failed to delete assignment' });
-    }
-});
-// Admin assignments management (SuperAdmin Only)
+// Staff management (Admin/SuperAdmin Only)
 app.get('/api/admin/staff', isAdmin, async (req, res) => {
-    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
     try {
-        const result = await pool.query('SELECT * FROM race_admin_assignments ORDER BY created_at DESC');
+        const result = await pool.query('SELECT * FROM race_staff WHERE event_id = $1 ORDER BY email ASC', [req.eventId]);
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch staff' });
@@ -319,42 +424,35 @@ app.get('/api/admin/staff', isAdmin, async (req, res) => {
 });
 
 app.post('/api/admin/staff', isAdmin, async (req, res) => {
-    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
-    const { email } = req.body;
-    
-    // Validation: Domain check
-    const domain = email.toLowerCase().split('@')[1];
-    const allowedDomain = (process.env.AUTH_DOMAIN || '').toLowerCase();
-    
-    if (domain !== allowedDomain) {
-        return res.status(400).json({ error: `Solo se permiten correos del dominio ${allowedDomain}` });
-    }
-
+    const { email, role, course } = req.body;
     try {
-        await pool.query('INSERT INTO race_admin_assignments (email) VALUES ($1) ON CONFLICT (email) DO NOTHING', [email.toLowerCase()]);
+        await pool.query(
+            'INSERT INTO race_staff (event_id, email, role, assigned_course) VALUES ($1, $2, $3, $4) ON CONFLICT (event_id, email) DO UPDATE SET role = EXCLUDED.role, assigned_course = EXCLUDED.assigned_course',
+            [req.eventId, email.toLowerCase(), role, course || null]
+        );
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to add staff' });
+        res.status(500).json({ error: 'Failed' });
     }
 });
 
 app.delete('/api/admin/staff/:email', isAdmin, async (req, res) => {
-    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
     try {
-        await pool.query('DELETE FROM race_admin_assignments WHERE email = $1', [req.params.email.toLowerCase()]);
+        await pool.query('DELETE FROM race_staff WHERE event_id = $1 AND email = $2', [req.eventId, req.params.email.toLowerCase()]);
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to delete staff' });
+        res.status(500).json({ error: 'Failed' });
     }
 });
+// Legacy routes removed (consolidated in staff routes above)
 
 // Economic Management Routes
 app.get('/api/admin/economic-records', isAdmin, async (req, res) => {
     try {
-        let query = 'SELECT * FROM race_economic_records';
-        let values = [];
+        let query = 'SELECT * FROM race_economic_records WHERE event_id = $1';
+        let values = [req.eventId];
         if (req.userRole === 'teacher') {
-            query += ' WHERE course = $1';
+            query += ' AND course = $2';
             values.push(req.assignedCourse);
         }
         query += ' ORDER BY payment_date DESC';
@@ -373,8 +471,8 @@ app.post('/api/admin/economic-records', isAdmin, async (req, res) => {
 
     try {
         await pool.query(
-            'INSERT INTO race_economic_records (course, amount, payment_date, observations) VALUES ($1, $2, $3, $4)',
-            [course, amount, date, observations]
+            'INSERT INTO race_economic_records (event_id, course, amount, payment_date, observations) VALUES ($1, $2, $3, $4, $5)',
+            [req.eventId, course, amount, date, observations]
         );
         res.json({ success: true });
     } catch (err) {

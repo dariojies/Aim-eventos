@@ -1,13 +1,20 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet } from 'lucide-react';
+import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet, Settings, Palette, Save } from 'lucide-react';
 
 interface Props {
   apiBase: string;
+  event: any;
   onLogout: () => void;
 }
 
-export default function AdminDashboard({ apiBase, onLogout }: Props) {
+export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
+  // Axios instance with event header
+  const api = axios.create({
+    baseURL: apiBase,
+    headers: { 'x-event-id': event?.id }
+  });
+
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ 
@@ -21,13 +28,13 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const [filters, setFilters] = useState({ type: 'all', course: 'all' });
   const [userRole, setUserRole] = useState<'superadmin' | 'admin' | 'teacher' | null>(null);
   const [assignedCourse, setAssignedCourse] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'registrations' | 'economics' | 'shirts'>('registrations');
+  const [activeTab, setActiveTab] = useState<'registrations' | 'economics' | 'shirts' | 'settings'>('registrations');
+  const [eventConfig, setEventConfig] = useState(event.config || { colors: { primary_gradient: '', accent: '' }, assets: { banner_url: '', logo_url: '' } });
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [economicRecords, setEconomicRecords] = useState<any[]>([]);
-  const [assignments, setAssignments] = useState<any[]>([]);
   const [showAssignments, setShowAssignments] = useState(false);
-  const [newAssignment, setNewAssignment] = useState({ email: '', course: '' });
-  const [staffAssignments, setStaffAssignments] = useState<any[]>([]);
-  const [newStaffEmail, setNewStaffEmail] = useState('');
+  const [staffList, setStaffList] = useState<any[]>([]);
+  const [newStaff, setNewStaff] = useState({ email: '', role: 'teacher', course: '' });
   const [newEconomicRecord, setNewEconomicRecord] = useState({ amount: '', date: new Date().toISOString().split('T')[0], observations: '', course: '' });
 
   const COURSES = [
@@ -40,29 +47,23 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
     setLoading(true);
     try {
       // 1. Get user role and assignments (Critical)
-      const authRes = await axios.get(`${apiBase}/api/auth/status`);
+      const authRes = await axios.get(`${apiBase}/api/auth/status`, { params: { eventId: event.id } });
       setUserRole(authRes.data.role);
       setAssignedCourse(authRes.data.assignedCourse);
       const role = authRes.data.role;
 
-      // 2. Fetch extra info only for superadmins
-      if (role === 'superadmin') {
-        // Fetch independently to avoid Promise.all failure cascade
+      // 2. Fetch staff only for admins/superadmins
+      if (role === 'superadmin' || role === 'admin') {
         try {
-          const res = await axios.get(`${apiBase}/api/admin/assignments`);
-          setAssignments(res.data);
-        } catch (e) { console.error("Error fetching teacher assignments:", e); }
-        
-        try {
-          const res = await axios.get(`${apiBase}/api/admin/staff`);
-          setStaffAssignments(res.data);
-        } catch (e) { console.error("Error fetching staff assignments:", e); }
+          const res = await api.get('/api/admin/staff');
+          setStaffList(res.data);
+        } catch (e) { console.error("Error fetching staff:", e); }
       }
 
       // 3. Fetch Main Data (Registrations)
       let registrations: any[] = [];
       try {
-        const res = await axios.get(`${apiBase}/api/admin/registrations`);
+        const res = await api.get('/api/admin/registrations');
         registrations = res.data;
         setData(res.data);
       } catch (e) { console.error("Error fetching registrations:", e); }
@@ -70,12 +71,12 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
       // 4. Fetch Economic Records
       let econRecords: any[] = [];
       try {
-        const econRes = await axios.get(`${apiBase}/api/admin/economic-records`);
+        const econRes = await api.get('/api/admin/economic-records');
         econRecords = econRes.data;
         setEconomicRecords(econRes.data);
       } catch (e) { console.error("Error fetching economic records:", e); }
 
-      // 5. Compute Stats (Only if we have registrations)
+      // 5. Compute Stats
       if (registrations.length > 0 || econRecords.length > 0) {
         const totalP = registrations.reduce((acc: number, curr: any) => acc + curr.total_participants, 0);
         const totalS = registrations.reduce((acc: number, curr: any) => {
@@ -127,7 +128,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
     if (!confirm('¿Estás seguro de que quieres regenerar todos los dorsales? El orden se basará en el Tipo (Profesor > Curso > Externo) y orden alfabético.')) return;
     setLoading(true);
     try {
-      await axios.post(`${apiBase}/api/admin/generate-dorsales`);
+      await api.post('/api/admin/generate-dorsales');
       await fetchData();
       alert('Dorsales generados correctamente.');
     } catch (err) {
@@ -141,7 +142,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
     if (!confirm('¿Estás seguro de que quieres borrar TODOS los dorsales asignados? Esta acción es irreversible.')) return;
     setLoading(true);
     try {
-      await axios.post(`${apiBase}/api/admin/reset-dorsales`);
+      await api.post('/api/admin/reset-dorsales');
       await fetchData();
       alert('Dorsales borrados correctamente.');
     } catch (err) {
@@ -154,7 +155,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar esta inscripción?')) return;
     try {
-      await axios.delete(`${apiBase}/api/admin/registrations/${id}`);
+      await api.delete(`/api/admin/registrations/${id}`);
       await fetchData();
     } catch (err) {
       alert('Error eliminando.');
@@ -168,7 +169,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
 
   const handleTogglePaid = async (id: string) => {
     try {
-      await axios.post(`${apiBase}/api/admin/registrations/${id}/toggle-paid`);
+      await api.post(`/api/admin/registrations/${id}/toggle-paid`);
       await fetchData();
     } catch (err) {
       alert('Error al actualizar estado de pago.');
@@ -199,7 +200,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const handleAddEconomicRecord = async () => {
     if (!newEconomicRecord.amount || !newEconomicRecord.date) return;
     try {
-      await axios.post(`${apiBase}/api/admin/economic-records`, newEconomicRecord);
+      await api.post('/api/admin/economic-records', newEconomicRecord);
       setNewEconomicRecord({ amount: '', date: new Date().toISOString().split('T')[0], observations: '', course: '' });
       await fetchData();
       alert('Entrega registrada correctamente.');
@@ -211,7 +212,7 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const handleDeleteEconomicRecord = async (id: string) => {
     if (!confirm('¿Eliminar este registro de entrega?')) return;
     try {
-      await axios.delete(`${apiBase}/api/admin/economic-records/${id}`);
+      await api.delete(`/api/admin/economic-records/${id}`);
       await fetchData();
     } catch (err) {
       alert('Error al eliminar registro.');
@@ -221,19 +222,34 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
   const handleDeleteStaff = async (email: string) => {
     if (!window.confirm(`¿Quitar permisos de administrador a ${email}?`)) return;
     try {
-      await axios.delete(`${apiBase}/api/admin/staff/${email}`);
+      await api.delete(`/api/admin/staff/${email}`);
       fetchData();
     } catch (err) { alert('Error al borrar'); }
   };
 
   const handleAddStaff = async () => {
-    if (!newStaffEmail) return;
+    if (!newStaff.email) return;
     try {
-      await axios.post(`${apiBase}/api/admin/staff`, { email: newStaffEmail });
-      setNewStaffEmail('');
+      await api.post('/api/admin/staff', newStaff);
+      setNewStaff({ email: '', role: 'teacher', course: '' });
       fetchData();
     } catch (err: any) { 
       alert(err.response?.data?.error || 'Error al añadir'); 
+    }
+  };
+
+  const handleSaveConfig = async () => {
+    setIsSavingConfig(true);
+    try {
+      await api.put('/api/admin/event-config', { config: eventConfig });
+      alert('Configuración guardada correctamente. Recarga para ver todos los cambios.');
+      // Apply primary gradient immediately to the page for preview
+      document.documentElement.style.setProperty('--primary-gradient', eventConfig.colors.primary_gradient);
+      document.documentElement.style.setProperty('--accent', eventConfig.colors.accent);
+    } catch (err) {
+      alert('Error al guardar la configuración.');
+    } finally {
+      setIsSavingConfig(false);
     }
   };
 
@@ -294,10 +310,10 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
     <div className="container animate" style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       <header className="admin-header">
         <div>
-          <h1 style={{ textAlign: 'left', margin: 0, fontSize: '1.8rem' }}>Panel Control Carrera</h1>
+          <h1 style={{ textAlign: 'left', margin: 0, fontSize: '1.8rem' }}>Gestión: {event.name}</h1>
           <p style={{ color: 'var(--text-dim)' }}>
             {userRole === 'superadmin' ? 'Super Admin - Desarrollador' : 
-             userRole === 'admin' ? 'Administrador de Gestión' : 
+             userRole === 'admin' ? `Staff de Gestión - ${event.org_name}` : 
              `Profesor - Clase: ${assignedCourse}`}
           </p>
         </div>
@@ -328,82 +344,60 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
 
       {showAssignments && (
         <div className="glass modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass" style={{ width: '90%', maxWidth: '600px', padding: 30, maxHeight: '80vh', overflowY: 'auto' }}>
-            <h2>Gestión de Profesores</h2>
-            <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+          <div className="glass" style={{ width: '90%', maxWidth: '700px', padding: 30, maxHeight: '80vh', overflowY: 'auto' }}>
+            <h2>Gestión de Staff del Evento</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 100px', gap: 10, marginBottom: 20 }}>
               <input 
                 type="email" 
-                placeholder="Email del profesor" 
+                placeholder="Email" 
                 className="input" 
-                value={newAssignment.email}
-                onChange={e => setNewAssignment({ ...newAssignment, email: e.target.value })}
+                value={newStaff.email}
+                onChange={e => setNewStaff({ ...newStaff, email: e.target.value })}
               />
               <select 
                 className="input" 
-                value={newAssignment.course}
-                onChange={e => setNewAssignment({ ...newAssignment, course: e.target.value })}
+                value={newStaff.role}
+                onChange={e => setNewStaff({ ...newStaff, role: e.target.value })}
               >
-                <option value="">Seleccionar curso</option>
-                {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
-                <option value="Profesores">Profesores</option>
-                <option value="Externos">Externos</option>
+                <option value="teacher">Profesor/Tutor</option>
+                <option value="admin">Administrador/Secretaría</option>
               </select>
-              <button className="btn btn-primary" onClick={handleAddAssignment}>Asignar</button>
+              {newStaff.role === 'teacher' && (
+                <select 
+                  className="input" 
+                  value={newStaff.course}
+                  onChange={e => setNewStaff({ ...newStaff, course: e.target.value })}
+                >
+                  <option value="">Seleccionar curso</option>
+                  {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="Profesores">Profesores</option>
+                  <option value="Externos">Externos</option>
+                </select>
+              )}
+              <button className="btn btn-primary" onClick={handleAddStaff}>Añadir</button>
             </div>
             <table>
               <thead>
                 <tr>
                   <th>Email</th>
+                  <th>Rol</th>
                   <th>Curso</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {assignments.map(a => (
-                  <tr key={a.email}>
-                    <td>{a.email}</td>
-                    <td>{a.assigned_course}</td>
+                {staffList.map(s => (
+                  <tr key={s.email}>
+                    <td>{s.email}</td>
+                    <td>{s.role.toUpperCase()}</td>
+                    <td>{s.assigned_course || '-'}</td>
                     <td>
-                      <button className="btn" onClick={() => handleDeleteAssignment(a.email)} style={{ color: '#ef4444' }}><Trash2 size={16}/></button>
+                      <button className="btn" onClick={() => handleDeleteStaff(s.email)} style={{ color: '#ef4444' }}><Trash2 size={16}/></button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-
-            {userRole === 'superadmin' && (
-              <div style={{ marginTop: 30, borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 20 }}>
-                <h2 style={{ color: 'var(--accent)' }}>Gestión de Administradores (Dirección)</h2>
-                <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-                  <input 
-                    type="email" 
-                    placeholder="Email del administrador" 
-                    className="input" 
-                    value={newStaffEmail}
-                    onChange={e => setNewStaffEmail(e.target.value)}
-                  />
-                  <button className="btn btn-primary" onClick={handleAddStaff}>Añadir Admin</button>
-                </div>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Email</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {staffAssignments.map(s => (
-                      <tr key={s.email}>
-                        <td>{s.email}</td>
-                        <td>
-                          <button className="btn" onClick={() => handleDeleteStaff(s.email)} style={{ color: '#ef4444' }}><Trash2 size={16}/></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
             <button className="btn glass" onClick={() => setShowAssignments(false)} style={{ marginTop: 20, width: '100%' }}>Cerrar</button>
           </div>
         </div>
@@ -496,6 +490,15 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
         >
           Resumen Camisetas
         </button>
+        {(userRole === 'superadmin' || userRole === 'admin') && (
+          <button 
+            className={`btn ${activeTab === 'settings' ? 'btn-primary' : 'glass'}`} 
+            onClick={() => setActiveTab('settings')}
+            style={{ flex: 1 }}
+          >
+            Configuración / Branding
+          </button>
+        )}
       </div>
 
       {activeTab === 'shirts' && (
@@ -713,6 +716,86 @@ export default function AdminDashboard({ apiBase, onLogout }: Props) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className="animate">
+          <div className="glass" style={{ padding: 40, maxWidth: '800px', margin: '0 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 30 }}>
+              <Palette size={32} color="var(--primary)" />
+              <h2 style={{ margin: 0 }}>Personalización del Evento</h2>
+            </div>
+
+            <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 30 }}>
+              <section>
+                <h3 style={{ fontSize: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 10, marginBottom: 15 }}>Colores y Estilo</h3>
+                
+                <div className="input-group">
+                  <label>Gradiente Principal (CSS)</label>
+                  <input 
+                    type="text" 
+                    placeholder="linear-gradient(...)"
+                    value={eventConfig.colors?.primary_gradient || ''}
+                    onChange={e => setEventConfig({ ...eventConfig, colors: { ...eventConfig.colors, primary_gradient: e.target.value } })}
+                  />
+                  <small style={{ opacity: 0.6, fontSize: '0.7rem' }}>Ej: linear-gradient(135deg, #6366f1 0%, #a855f7 100%)</small>
+                </div>
+
+                <div className="input-group">
+                  <label>Color de Acento</label>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <input 
+                      type="color" 
+                      style={{ width: 50, padding: 2, height: 45 }}
+                      value={eventConfig.colors?.accent || '#6366f1'}
+                      onChange={e => setEventConfig({ ...eventConfig, colors: { ...eventConfig.colors, accent: e.target.value } })}
+                    />
+                    <input 
+                      type="text" 
+                      value={eventConfig.colors?.accent || ''}
+                      onChange={e => setEventConfig({ ...eventConfig, colors: { ...eventConfig.colors, accent: e.target.value } })}
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h3 style={{ fontSize: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 10, marginBottom: 15 }}>Imágenes y Assets</h3>
+                
+                <div className="input-group">
+                  <label>URL del Cartel / Poster</label>
+                  <input 
+                    type="text" 
+                    placeholder="https://..."
+                    value={eventConfig.assets?.banner_url || ''}
+                    onChange={e => setEventConfig({ ...eventConfig, assets: { ...eventConfig.assets, banner_url: e.target.value } })}
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label>URL del Logo</label>
+                  <input 
+                    type="text" 
+                    placeholder="https://..."
+                    value={eventConfig.assets?.logo_url || ''}
+                    onChange={e => setEventConfig({ ...eventConfig, assets: { ...eventConfig.assets, logo_url: e.target.value } })}
+                  />
+                </div>
+              </section>
+            </div>
+
+            <div style={{ marginTop: 40, paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.1)', textAlign: 'right' }}>
+              <button 
+                className="btn btn-primary" 
+                style={{ minWidth: '200px' }} 
+                onClick={handleSaveConfig}
+                disabled={isSavingConfig}
+              >
+                {isSavingConfig ? 'Guardando...' : <><Save size={18} /> Guardar Cambios</>}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

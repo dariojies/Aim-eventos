@@ -12,10 +12,11 @@ const SHIRT_SIZES = ['4y', '8y', '12y', '16y', 's', 'm', 'l', 'xl', 'xxl'];
 
 interface Props {
   apiBase: string;
+  event: any;
   preselectCourse?: string | null;
 }
 
-export default function RegistrationForm({ apiBase, preselectCourse }: Props) {
+export default function RegistrationForm({ apiBase, event, preselectCourse }: Props) {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -44,6 +45,7 @@ export default function RegistrationForm({ apiBase, preselectCourse }: Props) {
     // Sanitize numeric fields before sending: empty strings should be 0 or 1
     const sanitizedData = {
       ...formData,
+      event_id: event.id,
       total_participants: formData.total_participants === ('' as any) ? 1 : Number(formData.total_participants),
       ampa_members: formData.ampa_members === ('' as any) ? 0 : Number(formData.ampa_members),
       shirts: Object.keys(formData.shirts).reduce((acc, size) => {
@@ -72,10 +74,10 @@ export default function RegistrationForm({ apiBase, preselectCourse }: Props) {
   if (submitted) {
     return (
       <div className="card glass animate success-message">
-        <CheckCircle size={64} color="#10b981" style={{ marginBottom: 20 }} />
+        <CheckCircle size={64} color="var(--primary, #10b981)" style={{ marginBottom: 20 }} />
         <h2>¡Registro Completado!</h2>
         <p style={{ marginTop: 15, color: '#475569' }}>
-          Tus datos han sido guardados correctamente. Nos vemos en la carrera.
+          Tus datos han sido guardados correctamente en <strong>{event.name}</strong>.
         </p>
         <button className="btn btn-primary" style={{ marginTop: 30 }} onClick={() => setSubmitted(false)}>
           Nuevo Registro
@@ -86,7 +88,14 @@ export default function RegistrationForm({ apiBase, preselectCourse }: Props) {
 
   return (
     <div className="card glass animate">
-      <h1>Inscripción Carrera</h1>
+      {event.config?.assets?.banner_url && (
+        <img 
+          src={event.config.assets.banner_url} 
+          alt="Cartel del evento" 
+          style={{ width: '100%', borderRadius: 16, marginBottom: 30, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} 
+        />
+      )}
+      <h1>{event.name}</h1>
       <form onSubmit={handleSubmit}>
         <div className="input-group">
           <label>Soy...</label>

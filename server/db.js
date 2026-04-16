@@ -7,167 +7,60 @@ const pool = new Pool({
 });
 
 const initDB = async () => {
-  // Ensure tables exist before any migration attempt
-  const coreTables = `
-    CREATE TABLE IF NOT EXISTS race_teacher_assignments (
-      email VARCHAR(255) PRIMARY KEY,
-      assigned_course VARCHAR(100) NOT NULL
+  // 1. Create Core Multi-Event Tables
+  const multiEventTables = `
+    CREATE TABLE IF NOT EXISTS race_organizations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(255) NOT NULL,
+      subdomain VARCHAR(100) UNIQUE NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS race_admin_assignments (
-      email VARCHAR(255) PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS race_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      org_id UUID REFERENCES race_organizations(id),
+      name VARCHAR(255) NOT NULL,
+      slug VARCHAR(100) UNIQUE NOT NULL,
+      config JSONB DEFAULT '{}',
+      is_active BOOLEAN DEFAULT true,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-  `;
-  try {
-    await pool.query(coreTables);
-  } catch (err) {
-    console.error('Error creating core staff tables:', err);
-  }
 
-  // MIGRACIÓN DE EMERGENCIA...
-  const migrationQuery = `
-    DO $$ 
-    DECLARE
-      row_count int;
-      old_exists boolean;
-      new_exists boolean;
-    BEGIN 
-      -- 1. Gestión de economic_records -> race_economic_records
-      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'economic_records') INTO old_exists;
-      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_economic_records') INTO new_exists;
-      
-      IF old_exists THEN
-        IF new_exists THEN
-          EXECUTE 'SELECT count(*) FROM race_economic_records' INTO row_count;
-          IF row_count = 0 THEN
-            EXECUTE 'INSERT INTO race_economic_records (course, amount, payment_date, observations) SELECT course, amount, payment_date, observations FROM economic_records';
-            EXECUTE 'DROP TABLE economic_records';
-          END IF;
-        ELSE
-          ALTER TABLE economic_records RENAME TO race_economic_records;
-        END IF;
-      END IF;
-
-      -- 2. Gestión de teacher_assignments -> race_teacher_assignments
-      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'teacher_assignments') INTO old_exists;
-      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_teacher_assignments') INTO new_exists;
-
-      IF old_exists THEN
-        IF new_exists THEN
-          EXECUTE 'SELECT count(*) FROM race_teacher_assignments' INTO row_count;
-          IF row_count = 0 THEN
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'teacher_assignments' AND column_name = 'course') THEN
-              EXECUTE 'INSERT INTO race_teacher_assignments (email, assigned_course) SELECT email, course FROM teacher_assignments';
-            ELSE
-              EXECUTE 'INSERT INTO race_teacher_assignments (email, assigned_course) SELECT email, assigned_course FROM teacher_assignments';
-            END IF;
-            EXECUTE 'DROP TABLE teacher_assignments';
-          END IF;
-        ELSE
-          ALTER TABLE teacher_assignments RENAME TO race_teacher_assignments;
-          IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'race_teacher_assignments' AND column_name = 'course') THEN
-            EXECUTE 'ALTER TABLE race_teacher_assignments RENAME COLUMN course TO assigned_course';
-          END IF;
-        END IF;
-      END IF;
-
-      -- 3. Gestión de admin_assignments -> race_admin_assignments
-      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'admin_assignments') INTO old_exists;
-      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_admin_assignments') INTO new_exists;
-
-      IF old_exists THEN
-        IF new_exists THEN
-          EXECUTE 'SELECT count(*) FROM race_admin_assignments' INTO row_count;
-          IF row_count = 0 THEN
-            -- Check if old table has created_at
-            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'admin_assignments' AND column_name = 'created_at') THEN
-               EXECUTE 'INSERT INTO race_admin_assignments (email, created_at) SELECT email, created_at FROM admin_assignments';
-            ELSE
-               EXECUTE 'INSERT INTO race_admin_assignments (email) SELECT email FROM admin_assignments';
-            END IF;
-            EXECUTE 'DROP TABLE admin_assignments';
-          END IF;
-        ELSE
-          ALTER TABLE admin_assignments RENAME TO race_admin_assignments;
-        END IF;
-      END IF;
-
-      -- 4. Gestión de session -> race_sessions
-      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'session') INTO old_exists;
-      SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_sessions') INTO new_exists;
-
-      IF old_exists THEN
-        IF new_exists THEN
-          EXECUTE 'SELECT count(*) FROM race_sessions' INTO row_count;
-          IF row_count = 0 THEN
-            EXECUTE 'INSERT INTO race_sessions (sid, sess, expire) SELECT sid, sess, expire FROM session';
-            EXECUTE 'DROP TABLE session';
-          END IF;
-        ELSE
-          ALTER TABLE session RENAME TO race_sessions;
-        END IF;
-      END IF;
-    END $$;
+    CREATE TABLE IF NOT EXISTS race_staff (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      event_id UUID REFERENCES race_events(id),
+      email VARCHAR(255) NOT NULL,
+      role VARCHAR(50) NOT NULL, -- 'admin', 'teacher'
+      assigned_course VARCHAR(100), -- for teachers
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(event_id, email)
+    );
   `;
 
-  try {
-    await pool.query(migrationQuery);
-  } catch (err) {
-    console.error('Migration failed (maybe already renamed):', err.message);
-  }
-
-  const queryText = `
+  // 2. Base Tables (Legacy/Standard)
+  const baseTables = `
     CREATE TABLE IF NOT EXISTS race_registrations (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      event_id UUID REFERENCES race_events(id),
       type VARCHAR(50) NOT NULL,
       course VARCHAR(100),
       full_name VARCHAR(255) NOT NULL,
       total_participants INTEGER DEFAULT 1,
       ampa_members INTEGER DEFAULT 0,
       wants_shirts BOOLEAN DEFAULT false,
-      shirt_4y INTEGER DEFAULT 0,
-      shirt_8y INTEGER DEFAULT 0,
-      shirt_12y INTEGER DEFAULT 0,
-      shirt_16y INTEGER DEFAULT 0,
-      shirt_s INTEGER DEFAULT 0,
-      shirt_m INTEGER DEFAULT 0,
-      shirt_l INTEGER DEFAULT 0,
-      shirt_xl INTEGER DEFAULT 0,
-      shirt_xxl INTEGER DEFAULT 0,
+      shirt_4y INTEGER DEFAULT 0, shirt_8y INTEGER DEFAULT 0, shirt_12y INTEGER DEFAULT 0, shirt_16y INTEGER DEFAULT 0,
+      shirt_s INTEGER DEFAULT 0, shirt_m INTEGER DEFAULT 0, shirt_l INTEGER DEFAULT 0, shirt_xl INTEGER DEFAULT 0, shirt_xxl INTEGER DEFAULT 0,
       observations TEXT,
       dorsal_start INTEGER,
       dorsal_end INTEGER,
       registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      is_paid BOOLEAN DEFAULT false
+      is_paid BOOLEAN DEFAULT false,
+      external_email VARCHAR(255),
+      external_phone VARCHAR(50)
     );
-
-    CREATE TABLE IF NOT EXISTS race_teacher_assignments (
-      email VARCHAR(255) PRIMARY KEY,
-      assigned_course VARCHAR(100) NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS race_admin_assignments (
-      email VARCHAR(255) PRIMARY KEY,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-
-    -- Ensure is_paid exists for existing databases
-    DO $$ 
-    BEGIN 
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_registrations' AND column_name='is_paid') THEN
-        ALTER TABLE race_registrations ADD COLUMN is_paid BOOLEAN DEFAULT false;
-      END IF;
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_registrations' AND column_name='external_email') THEN
-        ALTER TABLE race_registrations ADD COLUMN external_email VARCHAR(255);
-      END IF;
-      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_registrations' AND column_name='external_phone') THEN
-        ALTER TABLE race_registrations ADD COLUMN external_phone VARCHAR(50);
-      END IF;
-    END $$;
 
     CREATE TABLE IF NOT EXISTS race_economic_records (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      event_id UUID REFERENCES race_events(id),
       course VARCHAR(100) NOT NULL,
       amount DECIMAL(10,2) NOT NULL,
       payment_date DATE NOT NULL,
@@ -178,23 +71,73 @@ const initDB = async () => {
     CREATE TABLE IF NOT EXISTS race_sessions (
       "sid" varchar NOT NULL COLLATE "default",
       "sess" json NOT NULL,
-      "expire" timestamp(6) NOT NULL
+      "expire" timestamp(6) NOT NULL,
+      CONSTRAINT "race_sessions_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
     );
-
-    DO $$ 
-    BEGIN 
-      IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name='race_sessions_pkey') THEN
-        ALTER TABLE race_sessions ADD CONSTRAINT "race_sessions_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
-      END IF;
-    END $$;
-
     CREATE INDEX IF NOT EXISTS "IDX_race_session_expire" ON race_sessions ("expire");
   `;
+
   try {
-    await pool.query(queryText);
-    console.log('Database initialized successfully.');
+    await pool.query(multiEventTables);
+    await pool.query(baseTables);
+    
+    // 3. ATOMIC MIGRATION Logic
+    const migrationScript = `
+      DO $$ 
+      DECLARE
+        org_id_var UUID;
+        event_id_var UUID;
+      BEGIN 
+        -- Create Default Organization if none exists
+        IF NOT EXISTS (SELECT 1 FROM race_organizations WHERE subdomain = 'huertadelacruz') THEN
+          INSERT INTO race_organizations (name, subdomain) 
+          VALUES ('Huerta de la Cruz', 'huertadelacruz') 
+          RETURNING id INTO org_id_var;
+        ELSE
+          SELECT id INTO org_id_var FROM race_organizations WHERE subdomain = 'huertadelacruz';
+        END IF;
+
+        -- Create Default Event if none exists
+        IF NOT EXISTS (SELECT 1 FROM race_events WHERE slug = 'marcha-solidaria') THEN
+          INSERT INTO race_events (org_id, name, slug, config) 
+          VALUES (org_id_var, 'Carrera Solidaria Huerta de la Cruz', 'marcha-solidaria', 
+                 '{"colors":{"primary_gradient":"linear-gradient(135deg, #6366f1 0%, #a855f7 100%)", "accent":"#6366f1"}, "assets":{}}')
+          RETURNING id INTO event_id_var;
+        ELSE
+          SELECT id INTO event_id_var FROM race_events WHERE slug = 'marcha-solidaria';
+        END IF;
+
+        -- Ensure event_id exists in target tables
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_registrations' AND column_name='event_id') THEN
+          ALTER TABLE race_registrations ADD COLUMN event_id UUID REFERENCES race_events(id);
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_economic_records' AND column_name='event_id') THEN
+          ALTER TABLE race_economic_records ADD COLUMN event_id UUID REFERENCES race_events(id);
+        END IF;
+
+        -- Link all orphans to this event
+        UPDATE race_registrations SET event_id = event_id_var WHERE event_id IS NULL;
+        UPDATE race_economic_records SET event_id = event_id_var WHERE event_id IS NULL;
+
+        -- Migrate Teachers
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_teacher_assignments') THEN
+          INSERT INTO race_staff (event_id, email, role, assigned_course)
+          SELECT event_id_var, email, 'teacher', assigned_course FROM race_teacher_assignments
+          ON CONFLICT (event_id, email) DO NOTHING;
+        END IF;
+
+        -- Migrate Admins
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_admin_assignments') THEN
+          INSERT INTO race_staff (event_id, email, role)
+          SELECT event_id_var, email, 'admin' FROM race_admin_assignments
+          ON CONFLICT (event_id, email) DO NOTHING;
+        END IF;
+      END $$;
+    `;
+    await pool.query(migrationScript);
+    console.log('Database initialized and migrated successfully.');
   } catch (err) {
-    console.error('Error initializing database:', err);
+    console.error('Error during database initialization/migration:', err);
   }
 };
 
