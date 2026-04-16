@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Plus, Building2, Calendar, Layout, LogOut, ExternalLink } from 'lucide-react';
+import { Plus, Building2, Calendar, Layout, LogOut, ExternalLink, ArrowLeft } from 'lucide-react';
 
 interface Props {
   apiBase: string;
@@ -51,9 +51,14 @@ export default function GlobalAdminDashboard({ apiBase, onLogout }: Props) {
   return (
     <div className="container animate" style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
       <header className="admin-header">
-        <div>
-          <h1>Panel Global AIM</h1>
-          <p style={{ color: 'var(--text-dim)' }}>Gestión de Organizaciones y Eventos</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <button className="btn glass" onClick={() => window.location.href = '/'} title="Volver al Portal">
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1>Panel Global AIM</h1>
+            <p style={{ color: 'var(--text-dim)' }}>Gestión de Organizaciones y Eventos</p>
+          </div>
         </div>
         <button className="btn glass" onClick={onLogout} style={{ color: '#ef4444' }}>
           <LogOut size={18} />

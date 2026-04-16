@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import axios from 'axios';
-import { User, Send, CheckCircle, Info } from 'lucide-react';
+import { Shield, Send, Check, Info } from 'lucide-react';
 
 const COURSES = [
   '3 años A', '3 años B', '4 años A', '4 años B', '5 años A', '5 años B',
@@ -74,7 +74,7 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
   if (submitted) {
     return (
       <div className="card glass animate success-message">
-        <CheckCircle size={64} color="var(--primary, #10b981)" style={{ marginBottom: 20 }} />
+        <Check size={64} color="var(--primary, #10b981)" style={{ marginBottom: 20 }} />
         <h2>¡Registro Completado!</h2>
         <p style={{ marginTop: 15, color: '#475569' }}>
           Tus datos han sido guardados correctamente en <strong>{event.name}</strong>.
@@ -88,21 +88,6 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
 
   return (
     <div className="card glass animate" style={{ position: 'relative' }}>
-      <button 
-        className="btn glass" 
-        onClick={() => window.location.href = `/${event.slug}/admin`}
-        style={{ 
-          position: 'absolute', 
-          top: 20, 
-          right: 20, 
-          padding: '8px 16px', 
-          fontSize: '0.85rem',
-          background: 'rgba(255,255,255,0.05)',
-          border: '1px solid rgba(255,255,255,0.1)'
-        }}
-      >
-        <User size={16} /> Acceso Staff
-      </button>
       {event.config?.assets?.banner_url && (
         <img 
           src={event.config.assets.banner_url} 
@@ -253,6 +238,14 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
           )}
         </button>
       </form>
+
+      <div 
+        className="fab-admin" 
+        onClick={() => window.location.href = `/${event.slug}/admin`}
+        title="Acceso Administración"
+      >
+        <Shield size={28} />
+      </div>
     </div>
   );
 }

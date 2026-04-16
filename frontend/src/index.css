@@ -3,14 +3,27 @@
 :root {
   --primary: #6366f1;
   --secondary: #ec4899;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --text: #1e293b;
+  --text-dim: #64748b;
+  --accent: #10b981;
+  --warning: #f59e0b;
+  --glass: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --card-bg: #ffffff;
+  --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
   --background: #0f172a;
   --surface: rgba(255, 255, 255, 0.05);
   --text: #ffffff;
   --text-dim: #94a3b8;
-  --accent: #10b981;
-  --warning: #f59e0b;
   --glass: rgba(255, 255, 255, 0.03);
   --glass-border: rgba(255, 255, 255, 0.1);
+  --card-bg: rgba(255, 255, 255, 0.03);
+  --card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
 * {
@@ -22,12 +35,17 @@
 body {
   font-family: 'Outfit', sans-serif;
   background: var(--background);
-  background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
+  background: radial-gradient(circle at top left, var(--background) 0%, #e2e8f0 100%);
   background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+[data-theme='dark'] body {
+  background: radial-gradient(circle at top left, #1e293b 0%, #0f172a 100%);
 }
 
 body::before {
@@ -38,18 +56,18 @@ body::before {
   width: 100%;
   height: 100%;
   background: 
-    radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-    radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.15) 0%, transparent 40%);
+    radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(236, 72, 153, 0.1) 0%, transparent 40%);
   z-index: -1;
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
   border-radius: 28px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--card-shadow);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -163,7 +181,7 @@ th, td {
 }
 
 tr td {
-  background: white;
+  background: var(--glass);
 }
 
 tr td:first-child { border-radius: 12px 0 0 12px; }
@@ -202,23 +220,27 @@ th {
     position: fixed;
     bottom: 30px;
     right: 30px;
-    width: 60px;
-    height: 60px;
+    width: 65px;
+    height: 65px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 1000;
 }
 
 .fab-admin:hover {
-    transform: scale(1.1) rotate(5deg);
-    box-shadow: 0 6px 25px rgba(79, 70, 229, 0.5);
+    transform: scale(1.15) rotate(15deg);
+    box-shadow: 0 12px 40px rgba(99, 102, 241, 0.6);
+}
+
+.fab-admin:active {
+    transform: scale(0.95);
 }
 
 /* Tooltip Styles */
@@ -290,7 +312,7 @@ th {
     margin-bottom: 5px;
     text-align: left;
     font-size: 2.2rem;
-    background: linear-gradient(to right, #fff, #94a3b8);
+    background: linear-gradient(to right, var(--text), var(--text-dim));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -327,20 +349,24 @@ th {
 }
 
 .event-card {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--card-bg);
   border-radius: 32px;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--card-shadow);
   position: relative;
 }
 
 .event-card:hover {
   transform: translateY(-12px) scale(1.02);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface);
   border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .event-card:hover {
   box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.5);
 }
 

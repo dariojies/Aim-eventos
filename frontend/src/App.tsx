@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useParams, Navigate } from 'react-router-dom';
 import axios from 'axios';
+import { Sun, Moon } from 'lucide-react';
 import RegistrationForm from './components/RegistrationForm';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
@@ -84,9 +85,27 @@ function AdminLoader() {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('theme') as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
   return (
     <BrowserRouter>
       <div className="app">
+        <button 
+          className="btn glass theme-toggle" 
+          onClick={toggleTheme}
+          style={{ position: 'fixed', top: 20, right: 20, zIndex: 1000, width: 45, height: 45, borderRadius: '50%', padding: 0 }}
+        >
+          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+        </button>
         <Routes>
           <Route path="/" element={
             <EventSelector 

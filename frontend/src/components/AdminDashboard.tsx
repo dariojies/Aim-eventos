@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet, Palette, Save } from 'lucide-react';
+import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet, Palette, Save, ArrowLeft } from 'lucide-react';
 
 interface Props {
   apiBase: string;
@@ -162,10 +162,6 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
     }
   };
 
-  const handleLogout = async () => {
-    await axios.get(`${apiBase}/api/auth/logout`);
-    onLogout();
-  };
 
   const handleTogglePaid = async (id: string) => {
     try {
@@ -287,40 +283,52 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
   };
 
   return (
-    <div className="container animate" style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <header className="admin-header">
-        <div>
-          <h1 style={{ textAlign: 'left', margin: 0, fontSize: '1.8rem' }}>Gestión: {event.name}</h1>
-          <p style={{ color: 'var(--text-dim)' }}>
-            {userRole === 'superadmin' ? 'Super Admin - Desarrollador' : 
-             userRole === 'admin' ? `Staff de Gestión - ${event.org_name}` : 
-             `Profesor - Clase: ${assignedCourse}`}
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          {(userRole === 'superadmin' || userRole === 'admin') && (
-            <>
-              {userRole === 'superadmin' && (
-                <button className="btn glass" onClick={() => setShowAssignments(true)} style={{ color: 'var(--accent)' }}>
-                  <Users size={18} /> Asignaciones
-                </button>
-              )}
-              <button className="btn glass" onClick={handleResetDorsales} disabled={loading} style={{ color: '#f59e0b' }}>
-                <Trash2 size={18} /> Borrar Dorsales
-              </button>
-              <button className="btn btn-primary" onClick={handleGenerateDorsales} disabled={loading}>
-                <Ticket size={18} /> {loading ? 'Generando...' : 'Generar Dorsales'}
-              </button>
-            </>
-          )}
-          <button className="btn glass" onClick={exportCSV} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Download size={18} /> Exportar CSV
+    <div className="container animate" style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto' }}>
+      <header className="admin-header glass" style={{ padding: '20px 30px', marginBottom: 40, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <button className="btn glass" onClick={() => window.location.href = '/'} title="Volver al Portal">
+            <ArrowLeft size={18} />
           </button>
-          <button className="btn glass" onClick={handleLogout} style={{ color: '#ef4444' }}>
-            <LogOut size={18} />
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.8rem' }}>Gestión: {event.name}</h1>
+            <p style={{ margin: 0, opacity: 0.6, fontSize: '0.9rem' }}>
+              {userRole === 'superadmin' ? 'Super Admin - Desarrollador' : 
+               userRole === 'admin' ? `Staff de Gestión - ${event.org_name}` : 
+               `Profesor - Clase: ${assignedCourse}`}
+            </p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 15, alignItems: 'center' }}>
+          {userRole === 'superadmin' && (
+            <button className="btn glass" onClick={() => setShowAssignments(true)} style={{ color: 'var(--primary)' }} title="Gestionar Staff">
+              <Users size={18} />
+            </button>
+          )}
+          <button className="btn glass" onClick={exportCSV} title="Exportar Datos">
+            <Download size={18} />
+          </button>
+          <button className="btn glass" onClick={() => window.open(`/${event.slug}`, '_blank')}>
+            Ver Inscripción
+          </button>
+          <button className="btn glass" style={{ color: '#ef4444' }} onClick={onLogout}>
+            <LogOut size={18} /> Salir
           </button>
         </div>
       </header>
+        <div className="tabs glass" style={{ display: 'flex', gap: 10, padding: 10, marginBottom: 30, overflowX: 'auto' }}>
+          <button className={`btn ${activeTab === 'registrations' ? 'btn-primary' : 'glass'}`} onClick={() => setActiveTab('registrations')}>
+            <Ticket size={18} /> Participantes
+          </button>
+          <button className={`btn ${activeTab === 'shirts' ? 'btn-primary' : 'glass'}`} onClick={() => setActiveTab('shirts')}>
+            <Palette size={18} /> Camisetas
+          </button>
+          <button className={`btn ${activeTab === 'economics' ? 'btn-primary' : 'glass'}`} onClick={() => setActiveTab('economics')}>
+            <Euro size={18} /> Economía
+          </button>
+          <button className={`btn ${activeTab === 'settings' ? 'btn-primary' : 'glass'}`} onClick={() => setActiveTab('settings')}>
+            <Save size={18} /> Ajustes
+          </button>
+        </div>
 
       {showAssignments && (
         <div className="glass modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -704,7 +712,36 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
           <div className="glass" style={{ padding: 40, maxWidth: '800px', margin: '0 auto' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 30 }}>
               <Palette size={32} color="var(--primary)" />
-              <h2 style={{ margin: 0 }}>Personalización del Evento</h2>
+              <h2 style={{ margin: 0 }}>Administración y Estilo</h2>
+            </div>
+
+            <section style={{ marginBottom: 40, paddingBottom: 30, borderBottom: '1px solid var(--glass-border)' }}>
+              <h3 style={{ fontSize: '1rem', marginBottom: 20 }}>Acciones Rápidas</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div className="glass" style={{ padding: 20, border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                  <h4 style={{ color: '#f59e0b', margin: '0 0 10px 0', fontSize: '1rem' }}>Sorteo de Dorsales</h4>
+                  <p style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: 15 }}>Asigna números correlativos a todos los participantes.</p>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button className="btn btn-primary" onClick={handleGenerateDorsales} disabled={loading} style={{ flex: 1, padding: '8px' }}>
+                      <Ticket size={16} /> Generar
+                    </button>
+                    <button className="btn glass" onClick={handleResetDorsales} disabled={loading} style={{ color: '#ef4444', flex: 1, padding: '8px' }}>
+                      <Trash2 size={16} /> Reset
+                    </button>
+                  </div>
+                </div>
+                <div className="glass" style={{ padding: 20 }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem' }}>Descarga de Datos</h4>
+                  <p style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: 15 }}>Exporta la base de datos actual a formato CSV.</p>
+                  <button className="btn glass" onClick={exportCSV} style={{ width: '100%', padding: '8px' }}>
+                    <Download size={16} /> Exportar CSV
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 20 }}>
+              <h3 style={{ margin: 0, fontSize: '1rem' }}>Personalización Visual</h3>
             </div>
 
             <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 30 }}>
