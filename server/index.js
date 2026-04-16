@@ -16,6 +16,7 @@ const SUPER_ADMINS = ['jmmarinborrego@gmail.com', 'dario.jimenez@cevhuertadelacr
 
 // Organization Detection Middleware
 const orgMiddleware = async (req, res, next) => {
+    const host = req.headers.host || '';
     // Public Portal Domain (Allows any student to choose an event)
     if (
         host.includes('eventos.aimeducation.es') || 
