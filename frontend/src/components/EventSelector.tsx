@@ -52,8 +52,8 @@ export default function EventSelector({ apiBase, onSelect, onAdminLogin }: Event
     <div className="event-selector-container animate">
       <header className="selector-header">
         <div className="logo-section">
-          <h1>{org?.name || 'AIM Events'}</h1>
-          <p>{org?.isGlobal ? 'Portal de Eventos Públicos' : 'Eventos Disponibles'}</p>
+          <h1>{org?.name || 'Eventos AIM'}</h1>
+          <p>{org?.isGlobal ? 'Plataforma de eventos y actividades' : 'Eventos y Actividades Disponibles'}</p>
         </div>
         <button className="btn-admin-access" onClick={onAdminLogin}>
           <Shield size={18} />
@@ -78,9 +78,9 @@ export default function EventSelector({ apiBase, onSelect, onAdminLogin }: Event
           </div>
         ) : (
           events.map(event => (
-            <div 
-              key={event.id} 
-              className="event-card" 
+            <div
+              key={event.id}
+              className="event-card"
               onClick={() => onSelect(event)}
               style={{ '--primary-gradient': event.config?.colors?.primary_gradient } as any}
             >

@@ -16,9 +16,12 @@ const SUPER_ADMINS = ['jmmarinborrego@gmail.com', 'dario.jimenez@cevhuertadelacr
 
 // Organization Detection Middleware
 const orgMiddleware = async (req, res, next) => {
-    const host = req.headers.host || '';
-    // Global management domain
-    if (host.includes('eventos.aimeducation.es') || host.includes('localhost')) {
+    // Public Portal Domain (Allows any student to choose an event)
+    if (
+        host.includes('eventos.aimeducation.es') || 
+        host.includes('localhost') || 
+        host.includes('aim-eventos-7461019f1009.herokuapp.com')
+    ) {
         req.isGlobal = true;
         return next();
     }
@@ -50,6 +53,7 @@ const ALLOWED_ORIGINS = [
     FRONTEND_URL,
     'https://eventos.huertadelacruz.escuelavicencianaesur.es',
     'https://eventos.aimeducation.es',
+    'https://aim-eventos-7461019f1009.herokuapp.com',
     'http://localhost:5173',
     ...ENV_ALLOWED_ORIGINS
 ].filter(Boolean);
