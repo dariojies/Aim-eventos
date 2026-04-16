@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet, Settings, Palette, Save } from 'lucide-react';
+import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet, Palette, Save } from 'lucide-react';
 
 interface Props {
   apiBase: string;
@@ -176,26 +176,6 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
     }
   };
 
-  const handleAddAssignment = async () => {
-    if (!newAssignment.email || !newAssignment.course) return;
-    try {
-      await axios.post(`${apiBase}/api/admin/assignments`, newAssignment);
-      setNewAssignment({ email: '', course: '' });
-      await fetchData();
-    } catch (err) {
-      alert('Error al guardar asignación.');
-    }
-  };
-
-  const handleDeleteAssignment = async (email: string) => {
-    if (!confirm(`¿Eliminar asignación para ${email}?`)) return;
-    try {
-      await axios.delete(`${apiBase}/api/admin/assignments/${email}`);
-      await fetchData();
-    } catch (err) {
-      alert('Error al eliminar asignación.');
-    }
-  };
 
   const handleAddEconomicRecord = async () => {
     if (!newEconomicRecord.amount || !newEconomicRecord.date) return;

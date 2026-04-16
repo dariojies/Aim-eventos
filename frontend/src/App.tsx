@@ -60,7 +60,6 @@ function EventLoader() {
 
 function AdminLoader() {
   const { slug } = useParams();
-  const navigate = useNavigate();
   const [eventData, setEventData] = useState<any>(null);
   const [auth, setAuth] = useState<{ authenticated: boolean; role: string } | null>(null);
 
