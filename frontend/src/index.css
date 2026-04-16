@@ -3,26 +3,28 @@
 :root {
   --primary: #6366f1;
   --secondary: #ec4899;
+  --primary-deep: #0f172a; /* The user's preferred dark color */
+  --primary-deep-rgb: 15, 23, 42;
   --background: #f8fafc;
   --surface: #ffffff;
-  --text: #1e293b;
+  --text: #0f172a;
   --text-dim: #64748b;
   --accent: #10b981;
   --warning: #f59e0b;
   --glass: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(0, 0, 0, 0.05);
+  --glass-border: rgba(15, 23, 42, 0.1);
   --card-bg: #ffffff;
-  --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --card-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1);
 }
 
 [data-theme='dark'] {
-  --background: #0f172a;
-  --surface: rgba(255, 255, 255, 0.05);
+  --background: #020617;
+  --surface: rgba(15, 23, 42, 0.8);
   --text: #ffffff;
   --text-dim: #94a3b8;
-  --glass: rgba(255, 255, 255, 0.03);
+  --glass: rgba(15, 23, 42, 0.5);
   --glass-border: rgba(255, 255, 255, 0.1);
-  --card-bg: rgba(255, 255, 255, 0.03);
+  --card-bg: rgba(15, 23, 42, 0.4);
   --card-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 }
 
@@ -219,19 +221,20 @@ th {
 .fab-admin {
     position: fixed;
     bottom: 30px;
-    right: 30px;
+    left: 30px; /* Moved to bottom-left as requested */
     width: 65px;
     height: 65px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, var(--primary-deep), var(--primary));
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.4);
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 1000;
+    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .fab-admin:hover {
@@ -323,23 +326,47 @@ th {
 }
 
 .btn-admin-access {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
+    background: rgba(var(--primary-deep-rgb), 0.05);
+    border: 2px solid var(--text); /* Added border and adaptive color */
+    color: var(--text);
     padding: 12px 24px;
     border-radius: 14px;
     display: flex;
     align-items: center;
     gap: 10px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-admin-access:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--text);
+    color: var(--background);
     transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.btn-volver {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  z-index: 100;
+}
+
+.btn-volver:hover {
+  background: var(--text);
+  color: var(--background);
+  transform: translateX(-5px);
 }
 
 .events-grid {

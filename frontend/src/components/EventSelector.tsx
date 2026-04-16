@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Calendar, MapPin, ArrowRight, User } from 'lucide-react';
+import { Calendar, MapPin, ArrowRight, Shield } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -56,7 +56,7 @@ export default function EventSelector({ apiBase, onSelect, onAdminLogin }: Event
           <p>{org?.isGlobal ? 'Portal de Eventos Públicos' : 'Eventos Disponibles'}</p>
         </div>
         <button className="btn-admin-access" onClick={onAdminLogin}>
-          <User size={18} />
+          <Shield size={18} />
           <span>Acceso Staff</span>
         </button>
       </header>

@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import axios from 'axios';
-import { Shield, Send, Check, Info } from 'lucide-react';
+import { Shield, Send, Check, Info, ArrowLeft } from 'lucide-react';
 
 const COURSES = [
   '3 años A', '3 años B', '4 años A', '4 años B', '5 años A', '5 años B',
@@ -88,6 +88,9 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
 
   return (
     <div className="card glass animate" style={{ position: 'relative' }}>
+      <button className="btn-volver" onClick={() => window.location.href = '/'}>
+        <ArrowLeft size={18} /> Volver
+      </button>
       {event.config?.assets?.banner_url && (
         <img 
           src={event.config.assets.banner_url} 
