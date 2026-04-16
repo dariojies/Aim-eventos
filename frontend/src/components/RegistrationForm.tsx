@@ -100,7 +100,7 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
             backgroundImage: `url(${event.config.assets.banner_url})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            opacity: 0.12,
+            opacity: 0.35,
             zIndex: 0,
             pointerEvents: 'none'
           }} />
