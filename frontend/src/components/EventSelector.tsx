@@ -27,9 +27,17 @@ export default function EventSelector({ apiBase, onSelect, onAdminLogin }: Event
         const [orgRes, eventsRes] = await Promise.all([
           axios.get(`${apiBase}/api/organizations/current`),
           axios.get(`${apiBase}/api/events`)
-        ]);
-        setOrg(orgRes.data);
-        setEvents(eventsRes.data);
+        ]); // Restored missing bracket
+        const orgData = orgRes.data;
+        const eventsData = eventsRes.data;
+        
+        setOrg(orgData);
+        setEvents(eventsData);
+
+        // Auto-redirect for specific organizations that only have 1 event
+        if (!orgData.isGlobal && eventsData.length === 1) {
+          onSelect(eventsData[0]);
+        }
       } catch (err) {
         console.error('Failed to load events', err);
       } finally {

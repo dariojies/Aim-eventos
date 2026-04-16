@@ -206,6 +206,7 @@ const isAdmin = async (req, res, next) => {
     // Check SuperAdmin (Code)
     if (SUPER_ADMINS.includes(email)) {
         req.userRole = 'superadmin';
+        req.eventId = eventId; // Fix: Attach event ID for SuperAdmin requests
         return next();
     }
 
