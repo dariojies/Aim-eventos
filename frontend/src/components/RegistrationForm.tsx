@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import axios from 'axios';
-import { Send, CheckCircle, Info } from 'lucide-react';
+import { User, Send, CheckCircle, Info } from 'lucide-react';
 
 const COURSES = [
   '3 años A', '3 años B', '4 años A', '4 años B', '5 años A', '5 años B',
@@ -87,7 +87,22 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
   }
 
   return (
-    <div className="card glass animate">
+    <div className="card glass animate" style={{ position: 'relative' }}>
+      <button 
+        className="btn glass" 
+        onClick={() => window.location.href = `/${event.slug}/admin`}
+        style={{ 
+          position: 'absolute', 
+          top: 20, 
+          right: 20, 
+          padding: '8px 16px', 
+          fontSize: '0.85rem',
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)'
+        }}
+      >
+        <User size={16} /> Acceso Staff
+      </button>
       {event.config?.assets?.banner_url && (
         <img 
           src={event.config.assets.banner_url} 

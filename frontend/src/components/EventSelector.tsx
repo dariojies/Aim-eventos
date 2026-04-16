@@ -49,17 +49,26 @@ export default function EventSelector({ apiBase, onSelect, onAdminLogin }: Event
   }
 
   return (
-    <div className="event-selector-container">
+    <div className="event-selector-container animate">
       <header className="selector-header">
         <div className="logo-section">
-          <h1>{org?.name || 'AIM Education'}</h1>
-          <p>{org?.isGlobal ? 'Panel de Gestión Global' : 'Eventos Disponibles'}</p>
+          <h1>{org?.name || 'AIM Events'}</h1>
+          <p>{org?.isGlobal ? 'Portal de Eventos Públicos' : 'Eventos Disponibles'}</p>
         </div>
         <button className="btn-admin-access" onClick={onAdminLogin}>
           <User size={18} />
           <span>Acceso Staff</span>
         </button>
       </header>
+
+      <div style={{ marginBottom: 60, textAlign: 'center' }}>
+        <h2 style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: 20, letterSpacing: '-0.04em' }}>
+          Descubre el próximo <span style={{ color: 'var(--primary)' }}>desafío</span>
+        </h2>
+        <p style={{ fontSize: '1.2rem', color: 'var(--text-dim)', maxWidth: '600px', margin: '0 auto' }}>
+          Selecciona una de nuestras competiciones o eventos activos para comenzar tu registro.
+        </p>
+      </div>
 
       <main className="events-grid">
         {events.length === 0 ? (
@@ -69,16 +78,24 @@ export default function EventSelector({ apiBase, onSelect, onAdminLogin }: Event
           </div>
         ) : (
           events.map(event => (
-            <div key={event.id} className="event-card" onClick={() => onSelect(event)}>
+            <div 
+              key={event.id} 
+              className="event-card" 
+              onClick={() => onSelect(event)}
+              style={{ '--primary-gradient': event.config?.colors?.primary_gradient } as any}
+            >
               <div className="event-card-content">
-                <span className="org-badge">{event.org_name}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <span className="org-badge">{event.org_name}</span>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }}></div>
+                </div>
                 <h3>{event.name}</h3>
                 <div className="event-details">
-                  <span><MapPin size={14} /> Presencial</span>
-                  <span><Calendar size={14} /> Activo</span>
+                  <span><MapPin size={16} /> Presencial</span>
+                  <span><Calendar size={16} /> 2024</span>
                 </div>
                 <button className="btn-enter">
-                  Inscribirse <ArrowRight size={16} />
+                  Inscribirse <ArrowRight size={18} />
                 </button>
               </div>
             </div>
