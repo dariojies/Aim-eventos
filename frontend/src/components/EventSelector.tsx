@@ -52,7 +52,7 @@ export default function EventSelector({ apiBase, onSelect, onAdminLogin }: Event
     <div className="event-selector-container animate">
       <header className="selector-header">
         <div className="logo-section">
-          <h1>{org?.name || 'Eventos AIM'}</h1>
+          <h1>AIM Eventos</h1>
           <p>{org?.isGlobal ? 'Plataforma de eventos y actividades' : 'Eventos y Actividades Disponibles'}</p>
         </div>
         <button className="btn-admin-access" onClick={onAdminLogin}>
@@ -61,8 +61,8 @@ export default function EventSelector({ apiBase, onSelect, onAdminLogin }: Event
         </button>
       </header>
 
-      <div style={{ marginBottom: 60, textAlign: 'center' }}>
-        <h2 style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: 20, letterSpacing: '-0.04em' }}>
+      <div style={{ marginBottom: 30, textAlign: 'center' }}>
+        <h2 style={{ fontSize: '3.5rem', fontWeight: 800, marginBottom: 20, letterSpacing: '-0.04em', color: 'var(--text)' }}>
           Descubre el próximo <span style={{ color: 'var(--primary)' }}>desafío</span>
         </h2>
         <p style={{ fontSize: '1.2rem', color: 'var(--text-dim)', maxWidth: '600px', margin: '0 auto' }}>
@@ -92,7 +92,7 @@ export default function EventSelector({ apiBase, onSelect, onAdminLogin }: Event
                 <h3>{event.name}</h3>
                 <div className="event-details">
                   <span><MapPin size={16} /> Presencial</span>
-                  <span><Calendar size={16} /> 2024</span>
+                  <span><Calendar size={16} /> 2026</span>
                 </div>
                 <button className="btn-enter">
                   Inscribirse <ArrowRight size={18} />
@@ -105,7 +105,7 @@ export default function EventSelector({ apiBase, onSelect, onAdminLogin }: Event
 
       {org?.isGlobal && (
         <div className="superadmin-notice">
-          <p>Estás en el dominio de administración global.</p>
+          <p> </p>
         </div>
       )}
     </div>

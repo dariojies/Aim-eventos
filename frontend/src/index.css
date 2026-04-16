@@ -1,15 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
 
 :root {
-  --primary: #6366f1;
-  --secondary: #ec4899;
-  --primary-deep: #0f172a; /* The user's preferred dark color */
-  --primary-deep-rgb: 15, 23, 42;
+  --primary: #2ed06e; /* El verde corporativo */
+  --primary-rgb: 46, 208, 110;
+  --secondary: #0f172a; /* El azul marino/verde oscuro */
+  --secondary-rgb: 15, 23, 42;
+  --primary-gradient: linear-gradient(135deg, #2ed06e 0%, #1a7a3e 100%);
   --background: #f8fafc;
   --surface: #ffffff;
   --text: #0f172a;
   --text-dim: #64748b;
-  --accent: #10b981;
+  --accent: #2ed06e;
   --warning: #f59e0b;
   --glass: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(15, 23, 42, 0.1);
@@ -88,14 +89,14 @@ body::before {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: var(--primary-gradient);
   color: white;
-  box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 10px 15px -3px rgba(46, 208, 110, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 20px 25px -5px rgba(46, 208, 110, 0.4);
 }
 
 .btn-primary:active {
@@ -221,16 +222,16 @@ th {
 .fab-admin {
     position: fixed;
     bottom: 30px;
-    left: 30px; /* Moved to bottom-left as requested */
+    right: 30px; /* Moved back to bottom-right as requested */
     width: 65px;
     height: 65px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary-deep), var(--primary));
+    background: var(--primary-gradient);
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    box-shadow: 0 8px 32px rgba(15, 23, 42, 0.4);
+    box-shadow: 0 8px 32px rgba(46, 208, 110, 0.3);
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     z-index: 1000;
@@ -296,14 +297,14 @@ th {
 .event-selector-container {
     max-width: 1400px;
     margin: 0 auto;
-    padding: 60px 40px;
+    padding: 30px 40px;
 }
 
 .selector-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 80px;
+    margin-bottom: 40px;
     background: rgba(255, 255, 255, 0.03);
     padding: 30px 40px;
     border-radius: 30px;
@@ -315,7 +316,8 @@ th {
     margin-bottom: 5px;
     text-align: left;
     font-size: 2.2rem;
-    background: linear-gradient(to right, var(--text), var(--text-dim));
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--text) 0%, var(--primary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -326,7 +328,7 @@ th {
 }
 
 .btn-admin-access {
-    background: rgba(var(--primary-deep-rgb), 0.05);
+    background: rgba(var(--secondary-rgb), 0.05);
     border: 2px solid var(--text); /* Added border and adaptive color */
     color: var(--text);
     padding: 12px 24px;
@@ -347,7 +349,7 @@ th {
 }
 
 .btn-volver {
-  position: absolute;
+  position: fixed; /* Changed from absolute to fixed to follow scrolling */
   top: 30px;
   left: 30px;
   background: var(--glass);

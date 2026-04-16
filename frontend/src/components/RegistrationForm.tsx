@@ -87,160 +87,163 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
   }
 
   return (
-    <div className="card glass animate" style={{ position: 'relative' }}>
+    <>
       <button className="btn-volver" onClick={() => window.location.href = '/'}>
         <ArrowLeft size={18} /> Volver
       </button>
-      {event.config?.assets?.banner_url && (
-        <img 
-          src={event.config.assets.banner_url} 
-          alt="Cartel del evento" 
-          style={{ width: '100%', borderRadius: 16, marginBottom: 30, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} 
-        />
-      )}
-      <h1>{event.name}</h1>
-      <form onSubmit={handleSubmit}>
-        <div className="input-group">
-          <label>Soy...</label>
-          <select 
-            value={formData.type} 
-            onChange={e => setFormData({ ...formData, type: e.target.value })}
-          >
-            <option value="profesor">Profesor/a</option>
-            <option value="alumno">Alumno/a</option>
-            <option value="externo">Externo/a (Amigos, Antiguos alumnos, etc.)</option>
-          </select>
-        </div>
 
-        {formData.type === 'alumno' && (
+      <div className="card glass animate" style={{ position: 'relative' }}>
+        {event.config?.assets?.banner_url && (
+          <img 
+            src={event.config.assets.banner_url} 
+            alt="Cartel del evento" 
+            style={{ width: '100%', borderRadius: 16, marginBottom: 30, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} 
+          />
+        )}
+        <h1>{event.name}</h1>
+        <form onSubmit={handleSubmit}>
           <div className="input-group">
-            <label>Curso/Grupo</label>
+            <label>Soy...</label>
             <select 
-              value={formData.course} 
-              onChange={e => setFormData({ ...formData, course: e.target.value })}
+              value={formData.type} 
+              onChange={e => setFormData({ ...formData, type: e.target.value })}
             >
-              {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+              <option value="profesor">Profesor/a</option>
+              <option value="alumno">Alumno/a</option>
+              <option value="externo">Externo/a (Amigos, Antiguos alumnos, etc.)</option>
             </select>
           </div>
-        )}
 
-        <div className="input-group">
-          <label>Apellidos y Nombre</label>
-          <input 
-            type="text" 
-            required 
-            placeholder="Ej: García López, Juan"
-            value={formData.full_name}
-            onChange={e => setFormData({ ...formData, full_name: e.target.value })}
-          />
-        </div>
+          {formData.type === 'alumno' && (
+            <div className="input-group">
+              <label>Curso/Grupo</label>
+              <select 
+                value={formData.course} 
+                onChange={e => setFormData({ ...formData, course: e.target.value })}
+              >
+                {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+          )}
 
-        {formData.type === 'externo' && (
+          <div className="input-group">
+            <label>Apellidos y Nombre</label>
+            <input 
+              type="text" 
+              required 
+              placeholder="Ej: García López, Juan"
+              value={formData.full_name}
+              onChange={e => setFormData({ ...formData, full_name: e.target.value })}
+            />
+          </div>
+
+          {formData.type === 'externo' && (
+            <div className="grid" style={{ marginBottom: 20 }}>
+              <div className="input-group">
+                <label>Correo Electrónico</label>
+                <input 
+                  type="email" 
+                  required 
+                  placeholder="ejemplo@email.com"
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+              <div className="input-group">
+                <label>Teléfono</label>
+                <input 
+                  type="tel" 
+                  required 
+                  placeholder="600 000 000"
+                  value={formData.phone}
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="grid" style={{ marginBottom: 20 }}>
             <div className="input-group">
-              <label>Correo Electrónico</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                Participantes Totales 
+                <div className="tooltip">
+                  <Info size={12} />
+                  <span className="tooltiptext">Incluye a todos los miembros a registrar tanto si son del AMPA como si no.</span>
+                </div>
+              </label>
               <input 
-                type="email" 
-                required 
-                placeholder="ejemplo@email.com"
-                value={formData.email}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                type="number" 
+                min="1" 
+                required
+                value={formData.total_participants}
+                onChange={e => setFormData({ ...formData, total_participants: e.target.value === '' ? '' : parseInt(e.target.value) as any })}
               />
             </div>
             <div className="input-group">
-              <label>Teléfono</label>
+              <label>Miembros AMPA</label>
               <input 
-                type="tel" 
-                required 
-                placeholder="600 000 000"
-                value={formData.phone}
-                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                type="number" 
+                min="0" 
+                max={formData.total_participants === ('' as any) ? undefined : formData.total_participants}
+                value={formData.ampa_members}
+                onChange={e => setFormData({ ...formData, ampa_members: e.target.value === '' ? '' : parseInt(e.target.value) as any })}
               />
             </div>
           </div>
-        )}
 
-        <div className="grid" style={{ marginBottom: 20 }}>
-          <div className="input-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              Participantes Totales 
-              <div className="tooltip">
-                <Info size={12} />
-                <span className="tooltiptext">Incluye a todos los miembros a registrar tanto si son del AMPA como si no.</span>
+          <div className="input-group" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+            <input 
+              type="checkbox" 
+              id="wants_shirts" 
+              style={{ width: 'auto' }}
+              checked={formData.wants_shirts}
+              onChange={e => setFormData({ ...formData, wants_shirts: e.target.checked })}
+            />
+            <label htmlFor="wants_shirts" style={{ marginBottom: 0 }}>¿Queréis camisetas de la carrera?</label>
+          </div>
+
+          {formData.wants_shirts && (
+            <div className="input-group animate">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                Tallaje de Camisetas
+              </label>
+              <div className="grid" style={{ background: 'rgba(0,0,0,0.2)', padding: 15, borderRadius: 12 }}>
+                {SHIRT_SIZES.map(size => (
+                  <div key={size} className="shirt-input">
+                    <label style={{ fontSize: '0.7rem' }}>{size.toUpperCase()}</label>
+                    <input 
+                      type="number" 
+                      min="0" 
+                      className="input-sm"
+                      style={{ padding: '8px 5px' }}
+                      value={(formData.shirts as any)[size]}
+                      onChange={e => handleShirtChange(size, e.target.value)}
+                    />
+                  </div>
+                ))}
               </div>
-            </label>
-            <input 
-              type="number" 
-              min="1" 
-              required
-              value={formData.total_participants}
-              onChange={e => setFormData({ ...formData, total_participants: e.target.value === '' ? '' : parseInt(e.target.value) as any })}
-            />
-          </div>
-          <div className="input-group">
-            <label>Miembros AMPA</label>
-            <input 
-              type="number" 
-              min="0" 
-              max={formData.total_participants === ('' as any) ? undefined : formData.total_participants}
-              value={formData.ampa_members}
-              onChange={e => setFormData({ ...formData, ampa_members: e.target.value === '' ? '' : parseInt(e.target.value) as any })}
-            />
-          </div>
-        </div>
-
-        <div className="input-group" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <input 
-            type="checkbox" 
-            id="wants_shirts" 
-            style={{ width: 'auto' }}
-            checked={formData.wants_shirts}
-            onChange={e => setFormData({ ...formData, wants_shirts: e.target.checked })}
-          />
-          <label htmlFor="wants_shirts" style={{ marginBottom: 0 }}>¿Queréis camisetas de la carrera?</label>
-        </div>
-
-        {formData.wants_shirts && (
-          <div className="input-group animate">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              Tallaje de Camisetas
-            </label>
-            <div className="grid" style={{ background: 'rgba(0,0,0,0.2)', padding: 15, borderRadius: 12 }}>
-              {SHIRT_SIZES.map(size => (
-                <div key={size} className="shirt-input">
-                  <label style={{ fontSize: '0.7rem' }}>{size.toUpperCase()}</label>
-                  <input 
-                    type="number" 
-                    min="0" 
-                    className="input-sm"
-                    style={{ padding: '8px 5px' }}
-                    value={(formData.shirts as any)[size]}
-                    onChange={e => handleShirtChange(size, e.target.value)}
-                  />
-                </div>
-              ))}
             </div>
-          </div>
-        )}
-
-        <div className="input-group">
-          <label>Observaciones (Opcional)</label>
-          <textarea 
-            rows={3} 
-            placeholder="Alergias, tallas especiales, etc."
-            value={formData.observations}
-            onChange={e => setFormData({ ...formData, observations: e.target.value })}
-          ></textarea>
-        </div>
-
-        <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading}>
-          {loading ? 'Enviando...' : (
-            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-              <Send size={18} /> Confirmar Inscripción
-            </span>
           )}
-        </button>
-      </form>
+
+          <div className="input-group">
+            <label>Observaciones (Opcional)</label>
+            <textarea 
+              rows={3} 
+              placeholder="Alergias, tallas especiales, etc."
+              value={formData.observations}
+              onChange={e => setFormData({ ...formData, observations: e.target.value })}
+            ></textarea>
+          </div>
+
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: 20 }} disabled={loading}>
+            {loading ? 'Enviando...' : (
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <Send size={18} /> Confirmar Inscripción
+              </span>
+            )}
+          </button>
+        </form>
+      </div>
 
       <div 
         className="fab-admin" 
@@ -249,6 +252,6 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
       >
         <Shield size={28} />
       </div>
-    </div>
+    </>
   );
 }
