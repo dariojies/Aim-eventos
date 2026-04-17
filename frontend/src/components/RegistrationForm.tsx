@@ -17,7 +17,6 @@ interface Props {
 }
 
 export default function RegistrationForm({ apiBase, event, preselectCourse }: Props) {
-  const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const getInitialState = () => ({
     type: 'alumno',
@@ -59,7 +58,7 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
 
     try {
       await axios.post(`${apiBase}/api/register`, sanitizedData);
-      setSubmitted(true);
+      setFormData(getInitialState());
     } catch (err) {
       alert('Error en el registro. Por favor, inténtalo de nuevo.');
     } finally {
@@ -73,23 +72,7 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
     setFormData({ ...formData, shirts: { ...formData.shirts, [size]: val } });
   };
 
-  if (submitted) {
-    return (
-      <div className="card glass animate success-message">
-        <Check size={64} color="var(--primary, #10b981)" style={{ marginBottom: 20 }} />
-        <h2>¡Registro Completado!</h2>
-        <p style={{ marginTop: 15, color: '#475569' }}>
-          Tus datos han sido guardados correctamente en <strong>{event.name}</strong>.
-        </p>
-        <button className="btn btn-primary" style={{ marginTop: 30 }} onClick={() => {
-          setSubmitted(false);
-          setFormData(getInitialState());
-        }}>
-          Nuevo Registro
-        </button>
-      </div>
-    );
-  }
+  };
 
   return (
     <>
