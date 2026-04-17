@@ -72,8 +72,6 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
     setFormData({ ...formData, shirts: { ...formData.shirts, [size]: val } });
   };
 
-  };
-
   return (
     <>
       <button className="btn-volver" onClick={() => window.location.href = '/'}>
