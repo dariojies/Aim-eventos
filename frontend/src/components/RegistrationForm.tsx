@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import axios from 'axios';
-import { Shield, Send, Check, Info, ArrowLeft } from 'lucide-react';
+import { Shield, Send, Info, ArrowLeft } from 'lucide-react';
 
 const COURSES = [
   '3 años A', '3 años B', '4 años A', '4 años B', '5 años A', '5 años B',
