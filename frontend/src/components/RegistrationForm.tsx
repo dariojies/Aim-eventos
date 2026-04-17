@@ -19,7 +19,7 @@ interface Props {
 export default function RegistrationForm({ apiBase, event, preselectCourse }: Props) {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
+  const getInitialState = () => ({
     type: 'alumno',
     course: preselectCourse || COURSES[0],
     full_name: '',
@@ -31,6 +31,8 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
     email: '',
     phone: ''
   });
+
+  const [formData, setFormData] = useState(getInitialState());
 
   useEffect(() => {
     if (preselectCourse) {
@@ -79,7 +81,10 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
         <p style={{ marginTop: 15, color: '#475569' }}>
           Tus datos han sido guardados correctamente en <strong>{event.name}</strong>.
         </p>
-        <button className="btn btn-primary" style={{ marginTop: 30 }} onClick={() => setSubmitted(false)}>
+        <button className="btn btn-primary" style={{ marginTop: 30 }} onClick={() => {
+          setSubmitted(false);
+          setFormData(getInitialState());
+        }}>
           Nuevo Registro
         </button>
       </div>

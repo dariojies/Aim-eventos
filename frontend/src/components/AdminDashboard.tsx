@@ -503,7 +503,7 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
                 { label: 'Talla M', key: 'shirt_m' }, { label: 'Talla L', key: 'shirt_l' },
                 { label: 'Talla XL', key: 'shirt_xl' }, { label: 'Talla XXL', key: 'shirt_xxl' }
               ].map(size => {
-                const total = data.reduce((acc, curr) => acc + (curr.shirts?.[size.key.replace('shirt_', '')] || 0), 0);
+                const total = data.reduce((acc, curr) => acc + (parseInt(curr[size.key]) || 0), 0);
                 return (
                   <div key={size.key} className="glass" style={{ padding: 25, textAlign: 'center', border: '2px solid var(--primary)', background: total > 0 ? 'rgba(99, 102, 241, 0.05)' : 'white' }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-dim)', marginBottom: 8, textTransform: 'uppercase' }}>{size.label}</div>
@@ -733,15 +733,57 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
               <section>
                 <h3 style={{ fontSize: '1rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 10, marginBottom: 15 }}>Colores y Estilo</h3>
                 
-                <div className="input-group">
-                  <label>Gradiente Principal (CSS)</label>
-                  <input 
-                    type="text" 
-                    placeholder="linear-gradient(...)"
-                    value={eventConfig.colors?.primary_gradient || ''}
-                    onChange={e => setEventConfig({ ...eventConfig, colors: { ...eventConfig.colors, primary_gradient: e.target.value } })}
-                  />
-                  <small style={{ opacity: 0.6, fontSize: '0.7rem' }}>Ej: linear-gradient(135deg, #6366f1 0%, #a855f7 100%)</small>
+                <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+                  <div className="input-group">
+                    <label>Color Gradiente (Inicio)</label>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <input 
+                        type="color" 
+                        value={eventConfig.colors?.primary_gradient?.match(/#(?:[0-9a-fA-F]{3}){1,2}/g)?.[0] || '#6366f1'}
+                        onChange={e => {
+                          const start = e.target.value;
+                          const currentEnd = eventConfig.colors?.primary_gradient?.match(/#(?:[0-9a-fA-F]{3}){1,2}/g)?.[1] || start;
+                          setEventConfig({ ...eventConfig, colors: { ...eventConfig.colors, primary_gradient: `linear-gradient(135deg, ${start} 0%, ${currentEnd} 100%)` } });
+                        }}
+                        style={{ width: 40, padding: 0, cursor: 'pointer', border: 'none', borderRadius: 4 }}
+                      />
+                      <input 
+                        type="text" 
+                        value={eventConfig.colors?.primary_gradient?.match(/#(?:[0-9a-fA-F]{3}){1,2}/g)?.[0] || '#6366f1'}
+                        onChange={e => {
+                          const start = e.target.value;
+                          const currentEnd = eventConfig.colors?.primary_gradient?.match(/#(?:[0-9a-fA-F]{3}){1,2}/g)?.[1] || start;
+                          setEventConfig({ ...eventConfig, colors: { ...eventConfig.colors, primary_gradient: `linear-gradient(135deg, ${start} 0%, ${currentEnd} 100%)` } });
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Color Gradiente (Fin)</label>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <input 
+                        type="color" 
+                        value={eventConfig.colors?.primary_gradient?.match(/#(?:[0-9a-fA-F]{3}){1,2}/g)?.[1] || '#a855f7'}
+                        onChange={e => {
+                          const end = e.target.value;
+                          const currentStart = eventConfig.colors?.primary_gradient?.match(/#(?:[0-9a-fA-F]{3}){1,2}/g)?.[0] || end;
+                          setEventConfig({ ...eventConfig, colors: { ...eventConfig.colors, primary_gradient: `linear-gradient(135deg, ${currentStart} 0%, ${end} 100%)` } });
+                        }}
+                        style={{ width: 40, padding: 0, cursor: 'pointer', border: 'none', borderRadius: 4 }}
+                      />
+                      <input 
+                        type="text" 
+                        value={eventConfig.colors?.primary_gradient?.match(/#(?:[0-9a-fA-F]{3}){1,2}/g)?.[1] || '#a855f7'}
+                        onChange={e => {
+                          const end = e.target.value;
+                          const currentStart = eventConfig.colors?.primary_gradient?.match(/#(?:[0-9a-fA-F]{3}){1,2}/g)?.[0] || end;
+                          setEventConfig({ ...eventConfig, colors: { ...eventConfig.colors, primary_gradient: `linear-gradient(135deg, ${currentStart} 0%, ${end} 100%)` } });
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="input-group">

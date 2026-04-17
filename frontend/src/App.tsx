@@ -45,7 +45,15 @@ function EventLoader() {
             const root = document.documentElement;
             const colors = res.data.config.colors;
             if (colors.primary_gradient) root.style.setProperty('--primary-gradient', colors.primary_gradient);
-            if (colors.accent) root.style.setProperty('--primary', colors.accent); // Use accent as primary color
+            if (colors.accent) {
+              root.style.setProperty('--primary', colors.accent);
+              if (colors.accent.startsWith('#') && colors.accent.length >= 7) {
+                const r = parseInt(colors.accent.slice(1, 3), 16);
+                const g = parseInt(colors.accent.slice(3, 5), 16);
+                const b = parseInt(colors.accent.slice(5, 7), 16);
+                root.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
+              }
+            }
           }
         })
         .catch(() => navigate('/'))
@@ -66,7 +74,23 @@ function AdminLoader() {
 
   useEffect(() => {
     if (slug) {
-      axios.get(`${API_BASE}/api/events/${slug}`).then(res => setEventData(res.data));
+      axios.get(`${API_BASE}/api/events/${slug}`).then(res => {
+        setEventData(res.data);
+        if (res.data.config?.colors) {
+          const root = document.documentElement;
+          const colors = res.data.config.colors;
+          if (colors.primary_gradient) root.style.setProperty('--primary-gradient', colors.primary_gradient);
+          if (colors.accent) {
+            root.style.setProperty('--primary', colors.accent);
+            if (colors.accent.startsWith('#') && colors.accent.length >= 7) {
+              const r = parseInt(colors.accent.slice(1, 3), 16);
+              const g = parseInt(colors.accent.slice(3, 5), 16);
+              const b = parseInt(colors.accent.slice(5, 7), 16);
+              root.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
+            }
+          }
+        }
+      });
     }
     
     // Check auth status with event context
@@ -75,7 +99,10 @@ function AdminLoader() {
       .catch(() => setAuth({ authenticated: false, role: 'none' }));
   }, [slug]);
 
-  if (!auth) return <div className="loading-screen"><div className="loader"></div></div>;
+  // Prevent Race Condition: Wait for BOTH auth and eventData
+  if (!auth || (!eventData && auth.authenticated)) {
+    return <div className="loading-screen"><div className="loader"></div></div>;
+  }
 
   if (!auth.authenticated || auth.role === 'unauthorized') {
     return <AdminLogin apiBase={API_BASE} />;

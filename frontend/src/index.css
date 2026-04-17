@@ -91,12 +91,12 @@ body::before {
 .btn-primary {
   background: var(--primary-gradient);
   color: white;
-  box-shadow: 0 10px 15px -3px rgba(46, 208, 110, 0.3);
+  box-shadow: 0 10px 15px -3px rgba(var(--primary-rgb), 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 20px 25px -5px rgba(46, 208, 110, 0.4);
+  box-shadow: 0 20px 25px -5px rgba(var(--primary-rgb), 0.4);
 }
 
 .btn-primary:active {
