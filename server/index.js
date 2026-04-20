@@ -169,18 +169,25 @@ app.get('/api/auth/status', async (req, res) => {
         }
 
         // 2. Event-specific roles
-        const staffRes = await pool.query(
-            'SELECT role, assigned_course FROM race_staff WHERE event_id = $1 AND email = $2',
-            [eventId, email]
-        );
+        try {
+            const staffRes = await pool.query(
+                `SELECT r.role, r.assigned_course 
+                 FROM race_staff r
+                 JOIN race_events e ON r.event_id = e.id
+                 WHERE (e.slug = $1 OR e.id::text = $1) AND r.email = $2`,
+                [eventId, email]
+            );
 
-        if (staffRes.rows.length > 0) {
-            return res.json({ 
-                authenticated: true, 
-                user: req.user, 
-                role: staffRes.rows[0].role,
-                assignedCourse: staffRes.rows[0].assigned_course
-            });
+            if (staffRes.rows.length > 0) {
+                return res.json({ 
+                    authenticated: true, 
+                    user: req.user, 
+                    role: staffRes.rows[0].role,
+                    assignedCourse: staffRes.rows[0].assigned_course
+                });
+            }
+        } catch (err) {
+            console.error('API /auth/status - DB Error:', err.message);
         }
 
         res.json({ authenticated: true, user: req.user, role: 'unauthorized' });
@@ -213,12 +220,21 @@ const isAdmin = async (req, res, next) => {
     if (!eventId) return res.status(400).json({ error: 'Event ID required' });
 
     // Check Staff (DB) - Consolidated Table
-    const staffCheck = await pool.query('SELECT * FROM race_staff WHERE event_id = $1 AND email = $2', [eventId, email]);
-    if (staffCheck.rows.length > 0) {
-        req.userRole = staffCheck.rows[0].role;
-        req.assignedCourse = staffCheck.rows[0].assigned_course;
-        req.eventId = eventId;
-        return next();
+    try {
+        const staffCheck = await pool.query(
+            `SELECT r.* FROM race_staff r
+             JOIN race_events e ON r.event_id = e.id
+             WHERE (e.slug = $1 OR e.id::text = $1) AND r.email = $2`, 
+            [eventId, email]
+        );
+        if (staffCheck.rows.length > 0) {
+            req.userRole = staffCheck.rows[0].role;
+            req.assignedCourse = staffCheck.rows[0].assigned_course;
+            req.eventId = staffCheck.rows[0].event_id; // Inject real UUID
+            return next();
+        }
+    } catch (err) {
+        console.error('Middleware isAdmin - DB Error:', err.message);
     }
 
     res.status(403).json({ error: 'Forbidden: No assignment found for this event' });
