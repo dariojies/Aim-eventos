@@ -115,7 +115,7 @@ passport.use(new GoogleStrategy({
     callbackURL: "/auth/google/callback",
     proxy: true,
     passReqToCallback: true
-}, (req, accessToken, refreshToken, profile, done) => {
+}, async (req, accessToken, refreshToken, profile, done) => {
     const email = profile.emails[0].value.toLowerCase();
     const domain = email.split('@')[1];
     
@@ -124,22 +124,37 @@ passport.use(new GoogleStrategy({
         return done(null, profile);
     }
 
-    // 2. AimEducation Context (Global)
+    // 2. Explicit Staff Bypass (If explicitly added to any event staff, allow login)
+    try {
+        // Use LOWER() for case-insensitive matching against the database
+        const staffCheck = await pool.query('SELECT 1 FROM race_staff WHERE LOWER(email) = LOWER($1) LIMIT 1', [email]);
+        if (staffCheck.rows.length > 0) {
+            return done(null, profile);
+        }
+    } catch (err) {
+        console.error('Passport auth staff check error:', err);
+    }
+
+    // 3. AimEducation Context (Global)
     if (req.isGlobal) {
         const allowedDomains = ['aimeducation.es', 'allegro.in-ma.es'];
         if (allowedDomains.includes(domain)) {
             return done(null, profile);
         }
+        console.warn(`Passport: Global Login rejected for domain ${domain} (email: ${email})`);
         return done(null, false, { message: 'Dominio no permitido para el panel global' });
     }
 
-    // 3. Organization Context (Default/Huerta)
-    const allowedDomain = (process.env.AUTH_DOMAIN || '').toLowerCase();
-    if (domain === allowedDomain) {
+    // 4. Organization Context (Generic Domain fallback)
+    const allowedDomain = (process.env.AUTH_DOMAIN || 'cevhuertadelacruzesur.es').toLowerCase();
+    const secondaryAllowedDomain = 'escuelavicencianaesur.es';
+    
+    if (domain === allowedDomain || domain === secondaryAllowedDomain || domain.endsWith('.escuelavicencianaesur.es')) {
         return done(null, profile);
     }
 
-    return done(null, false, { message: 'Dominio no autorizado para esta organización' });
+    console.warn(`Passport: Org Login rejected for domain ${domain} (email: ${email}). Expected: ${allowedDomain} or ${secondaryAllowedDomain}`);
+    return done(null, false, { message: 'Dominio o usuario no autorizado para esta organización' });
 }));
 
 passport.serializeUser((user, done) => done(null, user));
