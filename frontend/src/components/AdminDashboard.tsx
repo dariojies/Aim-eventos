@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet, Palette, Save, ArrowLeft } from 'lucide-react';
+import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet, Palette, Save, ArrowLeft, Edit2, Check as CheckIcon } from 'lucide-react';
 
 interface Props {
   apiBase: string;
@@ -36,6 +36,8 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
   const [staffList, setStaffList] = useState<any[]>([]);
   const [newStaff, setNewStaff] = useState({ email: '', role: 'teacher', course: '' });
   const [newEconomicRecord, setNewEconomicRecord] = useState({ amount: '', date: new Date().toISOString().split('T')[0], observations: '', course: '' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [tempCourse, setTempCourse] = useState<string>('');
 
   const COURSES = [
     '3 años A', '3 años B', '4 años A', '4 años B', '5 años A', '5 años B',
@@ -119,6 +121,16 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateCourse = async (id: string) => {
+    try {
+      await api.put(`/api/admin/registrations/${id}`, { course: tempCourse });
+      setEditingId(null);
+      await fetchData();
+    } catch (err) {
+      alert('Error al actualizar el curso');
     }
   };
 
@@ -651,9 +663,40 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
               {filteredData.map(reg => (
                 <tr key={reg.id}>
                   <td>
-                    <span className={`badge badge-${reg.type}`}>
-                      {reg.type === 'alumno' ? reg.course : reg.type.toUpperCase()}
-                    </span>
+                    {editingId === reg.id ? (
+                      <div style={{ display: 'flex', gap: 5 }}>
+                        <select 
+                          value={tempCourse} 
+                          onChange={e => setTempCourse(e.target.value)}
+                          style={{ padding: '4px 8px', borderRadius: 8, fontSize: '0.8rem' }}
+                        >
+                          {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+                          <option value="Profesor">Profesor/a</option>
+                          <option value="Externo">Externo/a</option>
+                        </select>
+                        <button className="btn" style={{ padding: 4, color: 'var(--primary)', background: 'transparent' }} onClick={() => handleUpdateCourse(reg.id)}>
+                          <CheckIcon size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className={`badge badge-${reg.type}`}>
+                          {reg.type === 'alumno' ? reg.course : reg.type.toUpperCase()}
+                        </span>
+                        {(userRole === 'superadmin' || userRole === 'admin') && (
+                          <button 
+                            className="btn" 
+                            style={{ padding: 4, opacity: 0.5, background: 'transparent' }} 
+                            onClick={() => {
+                              setEditingId(reg.id);
+                              setTempCourse(reg.course || '');
+                            }}
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td style={{ fontWeight: 600 }}>{reg.full_name}</td>
                   <td>

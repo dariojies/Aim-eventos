@@ -161,7 +161,10 @@ passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
 
 // Auth Routes
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+app.get('/auth/google', passport.authenticate('google', { 
+    scope: ['profile', 'email'],
+    prompt: 'select_account' 
+}));
 app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/' }), (req, res) => {
     const host = req.get('host');
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
@@ -437,6 +440,21 @@ app.post('/api/admin/registrations/:id/toggle-paid', isAdmin, async (req, res) =
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: 'Failed to update payment status' });
+    }
+});
+
+app.put('/api/admin/registrations/:id', isAdmin, async (req, res) => {
+    if (req.userRole !== 'superadmin' && req.userRole !== 'admin') {
+        return res.status(403).json({ error: 'Forbidden: Admins only' });
+    }
+    const { id } = req.params;
+    const { course } = req.body;
+    try {
+        await pool.query('UPDATE race_registrations SET course = $1 WHERE id = $2', [course, id]);
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update registration' });
     }
 });
 
