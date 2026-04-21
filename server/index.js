@@ -448,9 +448,23 @@ app.put('/api/admin/registrations/:id', isAdmin, async (req, res) => {
         return res.status(403).json({ error: 'Forbidden: Admins only' });
     }
     const { id } = req.params;
-    const { course } = req.body;
+    const { course, shirts } = req.body;
     try {
-        await pool.query('UPDATE race_registrations SET course = $1 WHERE id = $2', [course, id]);
+        if (course !== undefined) {
+            await pool.query('UPDATE race_registrations SET course = $1 WHERE id = $2', [course, id]);
+        }
+        
+        if (shirts) {
+            const hasShirts = Object.values(shirts).some(v => (v as number) > 0);
+            await pool.query(`UPDATE race_registrations SET 
+                shirt_4y = $1, shirt_8y = $2, shirt_12y = $3, shirt_16y = $4,
+                shirt_s = $5, shirt_m = $6, shirt_l = $7, shirt_xl = $8, shirt_xxl = $9,
+                wants_shirts = $10
+                WHERE id = $11`, 
+                [shirts['4y'], shirts['8y'], shirts['12y'], shirts['16y'], 
+                 shirts.s, shirts.m, shirts.l, shirts.xl, shirts.xxl, hasShirts, id]);
+        }
+        
         res.json({ success: true });
     } catch (err) {
         console.error(err);

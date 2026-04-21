@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet, Palette, Save, ArrowLeft, Edit2, Check as CheckIcon } from 'lucide-react';
+import { Users, Ticket, Download, Trash2, LogOut, Euro, Wallet, Palette, Save, ArrowLeft, Edit2, Check as CheckIcon, Shirt } from 'lucide-react';
 
 interface Props {
   apiBase: string;
@@ -38,6 +38,8 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
   const [newEconomicRecord, setNewEconomicRecord] = useState({ amount: '', date: new Date().toISOString().split('T')[0], observations: '', course: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempCourse, setTempCourse] = useState<string>('');
+  const [editingShirtsId, setEditingShirtsId] = useState<string | null>(null);
+  const [tempShirts, setTempShirts] = useState<any>({});
 
   const COURSES = [
     '3 años A', '3 años B', '4 años A', '4 años B', '5 años A', '5 años B',
@@ -131,6 +133,16 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
       await fetchData();
     } catch (err) {
       alert('Error al actualizar el curso');
+    }
+  };
+
+  const handleUpdateShirts = async (id: string) => {
+    try {
+      await api.put(`/api/admin/registrations/${id}`, { shirts: tempShirts });
+      setEditingShirtsId(null);
+      await fetchData();
+    } catch (err) {
+      alert('Error al actualizar las camisetas');
     }
   };
 
@@ -707,8 +719,44 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
                       </span>
                     ) : '-'}
                   </td>
-                  <td style={{ fontSize: '0.8rem', color: 'var(--text-dim)', maxWidth: '200px' }}>
-                     {getShirtsLabel(reg)}
+                  <td style={{ fontSize: '0.8rem', color: 'var(--text-dim)', maxWidth: '300px' }}>
+                    {editingShirtsId === reg.id ? (
+                      <div className="glass" style={{ padding: 10, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 5 }}>
+                        {['4y', '8y', '12y', '16y', 's', 'm', 'l', 'xl', 'xxl'].map(sz => (
+                          <div key={sz} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <label style={{ fontSize: '0.6rem', textTransform: 'uppercase' }}>{sz}</label>
+                            <input 
+                              type="number" 
+                              value={tempShirts[sz] || 0}
+                              onChange={e => setTempShirts({ ...tempShirts, [sz]: parseInt(e.target.value) || 0 })}
+                              style={{ width: '40px', padding: '2px', fontSize: '0.8rem', textAlign: 'center' }}
+                            />
+                          </div>
+                        ))}
+                        <button className="btn" style={{ gridColumn: 'span 3', marginTop: 5, padding: 4, color: 'var(--primary)', background: 'rgba(255,255,255,0.1)' }} onClick={() => handleUpdateShirts(reg.id)}>
+                          <CheckIcon size={14} /> Guardar
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ flex: 1 }}>{getShirtsLabel(reg)}</div>
+                        {(userRole === 'superadmin' || userRole === 'admin') && (
+                          <button 
+                            className="btn" 
+                            style={{ padding: 4, opacity: 0.5, background: 'transparent' }} 
+                            onClick={() => {
+                              setEditingShirtsId(reg.id);
+                              setTempShirts({
+                                '4y': reg.shirt_4y || 0, '8y': reg.shirt_8y || 0, '12y': reg.shirt_12y || 0, '16y': reg.shirt_16y || 0,
+                                's': reg.shirt_s || 0, 'm': reg.shirt_m || 0, 'l': reg.shirt_l || 0, 'xl': reg.shirt_xl || 0, 'xxl': reg.shirt_xxl || 0
+                              });
+                            }}
+                          >
+                            <Shirt size={14} />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td style={{ fontWeight: 700, color: 'var(--accent)' }}>
                     {calculateAmount(reg)}€

@@ -47,6 +47,7 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
     const sanitizedData = {
       ...formData,
       event_id: event.id,
+      course: formData.type === 'alumno' ? formData.course : '', // Only students have a course
       total_participants: formData.total_participants === ('' as any) ? 1 : Number(formData.total_participants),
       ampa_members: formData.ampa_members === ('' as any) ? 0 : Number(formData.ampa_members),
       shirts: Object.keys(formData.shirts).reduce((acc, size) => {
