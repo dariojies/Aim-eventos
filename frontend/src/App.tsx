@@ -108,7 +108,17 @@ function AdminLoader() {
     return <AdminLogin apiBase={API_BASE} />;
   }
 
-  return <AdminDashboard apiBase={API_BASE} event={eventData} onLogout={() => window.location.reload()} />;
+  return (
+    <AdminDashboard 
+      apiBase={API_BASE} 
+      event={eventData} 
+      onLogout={() => {
+        axios.get(`${API_BASE}/api/auth/logout`).finally(() => {
+          window.location.reload();
+        });
+      }} 
+    />
+  );
 }
 
 export default function App() {
