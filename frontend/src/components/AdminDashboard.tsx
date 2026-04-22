@@ -727,7 +727,7 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
                         <span className={`badge badge-${reg.type}`}>
                           {reg.type === 'alumno' ? reg.course : reg.type.toUpperCase()}
                         </span>
-                        {!reg.wants_dorsal && (
+                        {reg.wants_dorsal === false && (
                           <span className="badge" style={{ background: '#fef3c7', color: '#92400e', borderColor: '#f59e0b' }}>
                              Solo Camisetas
                           </span>
