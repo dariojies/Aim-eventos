@@ -38,6 +38,8 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
   const [newEconomicRecord, setNewEconomicRecord] = useState({ amount: '', date: new Date().toISOString().split('T')[0], observations: '', course: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [tempCourse, setTempCourse] = useState<string>('');
+  const [tempType, setTempType] = useState<string>('');
+  const [editingShirtsId, setEditingShirtsId] = useState<string | null>(null);
   const [editingShirtsId, setEditingShirtsId] = useState<string | null>(null);
   const [tempShirts, setTempShirts] = useState<any>({});
 
@@ -91,16 +93,18 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
         const ampaDebt = registrations.reduce((acc: number, curr: any) => acc + (curr.ampa_members * 3), 0);
 
         const computed = registrations.reduce((acc: any, curr: any) => {
-          const regAmount = (curr.total_participants - curr.ampa_members) * 3;
-          const shirtsCount = curr.shirt_4y + curr.shirt_8y + curr.shirt_12y + curr.shirt_16y + 
-                             curr.shirt_s + curr.shirt_m + curr.shirt_l + curr.shirt_xl + curr.shirt_xxl;
+          const shirtsCount = (curr.shirt_4y || 0) + (curr.shirt_8y || 0) + (curr.shirt_12y || 0) + (curr.shirt_16y || 0) + 
+                             (curr.shirt_s || 0) + (curr.shirt_m || 0) + (curr.shirt_l || 0) + (curr.shirt_xl || 0) + (curr.shirt_xxl || 0);
+          
+          const wantsBib = curr.wants_dorsal !== false; // Treat null as true
+          const regAmount = wantsBib ? (curr.total_participants - curr.ampa_members) * 3 : 0;
           const shirtAmount = shirtsCount * 7;
           const total = regAmount + shirtAmount;
 
           return {
             registrations: acc.registrations + regAmount,
             shirts: acc.shirts + shirtAmount,
-            ampa: acc.ampa + (curr.ampa_members * 3),
+            ampa: acc.ampa + (wantsBib ? curr.ampa_members * 3 : 0),
             due: acc.due + total,
             paid: acc.paid + (curr.is_paid ? total : 0)
           };
@@ -128,11 +132,14 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
 
   const handleUpdateCourse = async (id: string) => {
     try {
-      await api.put(`/api/admin/registrations/${id}`, { course: tempCourse });
+      await api.put(`/api/admin/registrations/${id}`, { 
+        type: tempType,
+        course: tempType === 'alumno' ? tempCourse : '' 
+      });
       setEditingId(null);
       await fetchData();
     } catch (err) {
-      alert('Error al actualizar el curso');
+      alert('Error al actualizar el registro');
     }
   };
 
@@ -258,7 +265,8 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
                        (reg.shirt_s || 0) + (reg.shirt_m || 0) + (reg.shirt_l || 0) + (reg.shirt_xl || 0) + (reg.shirt_xxl || 0);
     
     // 3€ per bib, unless it's an ampa member (free bib) or they don't want a bib (no bib)
-    const bibCost = reg.wants_dorsal ? (reg.total_participants - reg.ampa_members) * 3 : 0;
+    const wantsBib = reg.wants_dorsal !== false; // Default to true if null
+    const bibCost = wantsBib ? (reg.total_participants - reg.ampa_members) * 3 : 0;
     return bibCost + shirtsCount * 7;
   };
 
@@ -679,18 +687,40 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
                 <tr key={reg.id}>
                   <td>
                     {editingId === reg.id ? (
-                      <div style={{ display: 'flex', gap: 5 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                         <select 
-                          value={tempCourse} 
-                          onChange={e => setTempCourse(e.target.value)}
-                          style={{ padding: '4px 8px', borderRadius: 8, fontSize: '0.8rem' }}
+                          value={tempType} 
+                          onChange={e => setTempType(e.target.value)}
+                          style={{ padding: '4px 8px', borderRadius: 8, fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)' }}
                         >
-                          {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
-                          <option value="Profesor">Profesor/a</option>
-                          <option value="Externo">Externo/a</option>
+                          <option value="alumno">Alumno/a</option>
+                          <option value="profesor">Profesor/a</option>
+                          <option value="externo">Externo/a</option>
                         </select>
-                        <button className="btn" style={{ padding: 4, color: 'var(--primary)', background: 'transparent' }} onClick={() => handleUpdateCourse(reg.id)}>
-                          <CheckIcon size={16} />
+                        
+                        {tempType === 'alumno' && (
+                          <select 
+                            value={tempCourse} 
+                            onChange={e => setTempCourse(e.target.value)}
+                            style={{ padding: '4px 8px', borderRadius: 8, fontSize: '0.8rem' }}
+                          >
+                            <option value="">-- Seleccionar Curso --</option>
+                            {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        )}
+
+                        <button 
+                          className="btn" 
+                          style={{ 
+                            padding: 4, 
+                            color: 'var(--primary)', 
+                            background: 'rgba(255,255,255,0.1)',
+                            opacity: (tempType === 'alumno' && !tempCourse) ? 0.3 : 1
+                          }} 
+                          onClick={() => handleUpdateCourse(reg.id)}
+                          disabled={tempType === 'alumno' && !tempCourse}
+                        >
+                          <CheckIcon size={16} /> Guardar Cambios
                         </button>
                       </div>
                     ) : (
@@ -710,6 +740,7 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
                             onClick={() => {
                               setEditingId(reg.id);
                               setTempCourse(reg.course || '');
+                              setTempType(reg.type);
                             }}
                           >
                             <Edit2 size={12} />

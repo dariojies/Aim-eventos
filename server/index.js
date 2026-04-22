@@ -448,9 +448,12 @@ app.put('/api/admin/registrations/:id', isAdmin, async (req, res) => {
         return res.status(403).json({ error: 'Forbidden: Admins only' });
     }
     const { id } = req.params;
-    const { course, shirts } = req.body;
+    const { course, type, shirts } = req.body;
     try {
-        if (course !== undefined) {
+        if (type !== undefined) {
+            const finalCourse = type === 'alumno' ? (course || '') : '';
+            await pool.query('UPDATE race_registrations SET type = $1, course = $2 WHERE id = $3', [type, finalCourse, id]);
+        } else if (course !== undefined) {
             await pool.query('UPDATE race_registrations SET course = $1 WHERE id = $2', [course, id]);
         }
         

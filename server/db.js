@@ -120,6 +120,9 @@ const initDB = async () => {
         UPDATE race_registrations SET event_id = event_id_var WHERE event_id IS NULL;
         UPDATE race_economic_records SET event_id = event_id_var WHERE event_id IS NULL;
 
+        -- Ensure older registrations have wants_dorsal = true
+        UPDATE race_registrations SET wants_dorsal = true WHERE wants_dorsal IS NULL;
+
         -- Migrate Teachers
         IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'race_teacher_assignments') THEN
           INSERT INTO race_staff (event_id, email, role, assigned_course)
