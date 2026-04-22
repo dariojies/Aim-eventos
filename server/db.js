@@ -55,7 +55,8 @@ const initDB = async () => {
       registration_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       is_paid BOOLEAN DEFAULT false,
       external_email VARCHAR(255),
-      external_phone VARCHAR(50)
+      external_phone VARCHAR(50),
+      wants_dorsal BOOLEAN DEFAULT true
     );
 
     CREATE TABLE IF NOT EXISTS race_economic_records (

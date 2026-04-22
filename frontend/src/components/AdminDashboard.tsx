@@ -254,9 +254,12 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
   };
 
   const calculateAmount = (reg: any) => {
-    const shirtsCount = reg.shirt_4y + reg.shirt_8y + reg.shirt_12y + reg.shirt_16y + 
-                       reg.shirt_s + reg.shirt_m + reg.shirt_l + reg.shirt_xl + reg.shirt_xxl;
-    return (reg.total_participants - reg.ampa_members) * 3 + shirtsCount * 7;
+    const shirtsCount = (reg.shirt_4y || 0) + (reg.shirt_8y || 0) + (reg.shirt_12y || 0) + (reg.shirt_16y || 0) + 
+                       (reg.shirt_s || 0) + (reg.shirt_m || 0) + (reg.shirt_l || 0) + (reg.shirt_xl || 0) + (reg.shirt_xxl || 0);
+    
+    // 3€ per bib, unless it's an ampa member (free bib) or they don't want a bib (no bib)
+    const bibCost = reg.wants_dorsal ? (reg.total_participants - reg.ampa_members) * 3 : 0;
+    return bibCost + shirtsCount * 7;
   };
 
   const exportCSV = () => {
@@ -695,6 +698,11 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
                         <span className={`badge badge-${reg.type}`}>
                           {reg.type === 'alumno' ? reg.course : reg.type.toUpperCase()}
                         </span>
+                        {!reg.wants_dorsal && (
+                          <span className="badge" style={{ background: '#fef3c7', color: '#92400e', borderColor: '#f59e0b' }}>
+                             Solo Camisetas
+                          </span>
+                        )}
                         {(userRole === 'superadmin' || userRole === 'admin') && (
                           <button 
                             className="btn" 

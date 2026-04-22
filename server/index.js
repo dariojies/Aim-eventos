@@ -381,8 +381,8 @@ app.post('/api/admin/generate-dorsales', isAdmin, async (req, res) => {
         const maxRes = await pool.query('SELECT MAX(dorsal_end) as max_dorsal FROM race_registrations WHERE event_id = $1', [req.eventId]);
         let currentDorsal = (maxRes.rows[0].max_dorsal || 0) + 1;
 
-        // Get only paid registrations that DON'T have a dorsal yet
-        const result = await pool.query('SELECT * FROM race_registrations WHERE event_id = $1 AND is_paid = true AND dorsal_start IS NULL', [req.eventId]);
+        // Get only paid registrations that DON'T have a dorsal yet AND want one
+        const result = await pool.query('SELECT * FROM race_registrations WHERE event_id = $1 AND is_paid = true AND dorsal_start IS NULL AND wants_dorsal = true', [req.eventId]);
         const newRegistrations = result.rows;
 
         if (newRegistrations.length === 0) {
@@ -473,7 +473,9 @@ app.put('/api/admin/registrations/:id', isAdmin, async (req, res) => {
 });
 
 app.delete('/api/admin/registrations/:id', isAdmin, async (req, res) => {
-    if (req.userRole !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    if (req.userRole !== 'superadmin' && req.userRole !== 'admin') {
+        return res.status(403).json({ error: 'Forbidden: Admin privileges required' });
+    }
     try {
         await pool.query('DELETE FROM race_registrations WHERE id = $1', [req.params.id]);
         res.json({ success: true });

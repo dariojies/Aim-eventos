@@ -28,7 +28,8 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
     shirts: { '4y': 0, '8y': 0, '12y': 0, '16y': 0, 's': 0, 'm': 0, 'l': 0, 'xl': 0, 'xxl': 0 },
     observations: '',
     email: '',
-    phone: ''
+    phone: '',
+    wants_dorsal: true
   });
 
   const [formData, setFormData] = useState(getInitialState());
@@ -195,6 +196,24 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
             </div>
           </div>
 
+          <div className="input-group" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <input 
+              type="checkbox" 
+              id="wants_dorsal" 
+              style={{ width: 'auto' }}
+              checked={!formData.wants_dorsal}
+              onChange={e => {
+                const isNoDorsal = e.target.checked;
+                setFormData({ 
+                  ...formData, 
+                  wants_dorsal: !isNoDorsal,
+                  wants_shirts: isNoDorsal ? true : formData.wants_shirts 
+                });
+              }}
+            />
+            <label htmlFor="wants_dorsal" style={{ marginBottom: 0, fontWeight: 700, color: '#ef4444' }}>Sin dorsal para correr</label>
+          </div>
+
           <div className="input-group" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
             <input 
               type="checkbox" 
@@ -202,6 +221,7 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
               style={{ width: 'auto' }}
               checked={formData.wants_shirts}
               onChange={e => setFormData({ ...formData, wants_shirts: e.target.checked })}
+              disabled={!formData.wants_dorsal}
             />
             <label htmlFor="wants_shirts" style={{ marginBottom: 0 }}>¿Queréis camisetas de la carrera?</label>
           </div>
