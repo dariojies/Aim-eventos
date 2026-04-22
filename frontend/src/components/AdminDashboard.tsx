@@ -40,7 +40,6 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
   const [tempCourse, setTempCourse] = useState<string>('');
   const [tempType, setTempType] = useState<string>('');
   const [editingShirtsId, setEditingShirtsId] = useState<string | null>(null);
-  const [editingShirtsId, setEditingShirtsId] = useState<string | null>(null);
   const [tempShirts, setTempShirts] = useState<any>({});
 
   const COURSES = [
