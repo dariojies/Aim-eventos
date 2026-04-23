@@ -356,21 +356,14 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// Admin Routes
+// Admin Routes (EMERGENCY MODE: Ignore event_id filters to find lost data)
 app.get('/api/admin/registrations', isAdmin, async (req, res) => {
     try {
-        let query = 'SELECT * FROM race_registrations WHERE event_id = $1';
-        let values = [req.eventId];
-
-        if (req.userRole === 'teacher') {
-            query += ' AND course = $2';
-            values.push(req.assignedCourse);
-        }
-
-        query += ' ORDER BY registration_date DESC';
-        const result = await pool.query(query, values);
+        // Raw query to see everything in the table regardless of columns
+        const result = await pool.query('SELECT * FROM race_registrations ORDER BY registration_date DESC');
         res.json(result.rows);
     } catch (err) {
+        console.error('EMERGENCY FETCH ERROR:', err.message);
         res.status(500).json({ error: 'Failed to fetch registrations' });
     }
 });
