@@ -18,6 +18,33 @@ interface Props {
 
 export default function RegistrationForm({ apiBase, event, preselectCourse }: Props) {
   const [loading, setLoading] = useState(false);
+  const [stock, setStock] = useState<any>(null);
+
+  const SIZE_LABELS: any = {
+    '4y': '4 AÑOS',
+    '8y': '8 AÑOS',
+    '12y': '12 AÑOS',
+    '16y': '16 AÑOS',
+    's': 'S',
+    'm': 'M',
+    'l': 'L',
+    'xl': 'XL',
+    'xxl': 'XXL'
+  };
+
+  useEffect(() => {
+    fetchStock();
+  }, [event.slug]);
+
+  const fetchStock = async () => {
+    try {
+      const res = await axios.get(`${apiBase}/api/events/${event.slug}/shirts-stock`);
+      setStock(res.data);
+    } catch (e) {
+      console.error("Error fetching stock:", e);
+    }
+  };
+
   const getInitialState = () => ({
     type: 'alumno',
     course: preselectCourse || COURSES[0],
@@ -61,91 +88,89 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
     try {
       await axios.post(`${apiBase}/api/register`, sanitizedData);
       setFormData(getInitialState());
-    } catch (err) {
-      alert('Error en el registro. Por favor, inténtalo de nuevo.');
+      fetchStock(); // Refresh stock after purchase
+    } catch (err: any) {
+      const msg = err.response?.data?.error || 'Error en el registro. Por favor, inténtalo de nuevo.';
+      alert(msg);
     } finally {
       setLoading(false);
     }
   };
 
   const handleShirtChange = (size: string, value: string) => {
-    // Allow empty string for clearing inputs
-    const val = value === '' ? '' : parseInt(value);
-    setFormData({ ...formData, shirts: { ...formData.shirts, [size]: val } });
+    const val = value === '' ? 0 : parseInt(value);
+    
+    // Validar stock si lo tenemos cargado
+    if (stock && stock[size]) {
+      const available = stock[size].available;
+      if (val > available) {
+        alert(`Lo sentimos, se ha alcanzado el límite de stock para la talla ${SIZE_LABELS[size]}. Quedan ${available} unidades.`);
+        setFormData({
+          ...formData,
+          shirts: { ...formData.shirts, [size]: available }
+        });
+        return;
+      }
+    }
+
+    setFormData({
+      ...formData,
+      shirts: { ...formData.shirts, [size]: val }
+    });
   };
 
   return (
     <>
-      <button className="btn-volver" onClick={() => window.location.href = '/'}>
-        <ArrowLeft size={18} /> Volver
-      </button>
+      <div className="registration-container animate">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 25 }}>
+          <button onClick={() => window.history.back()} className="btn btn-secondary" style={{ padding: '8px' }}>
+            <ArrowLeft size={20} />
+          </button>
+          <h1 style={{ margin: 0, fontSize: '1.2rem' }}>Formulario de Inscripción</h1>
+        </div>
 
-      <div className="card glass animate" style={{ position: 'relative', overflow: 'hidden' }}>
-        {event.config?.assets?.banner_url && (
-          <div style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            backgroundImage: `url(${event.config.assets.banner_url})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            opacity: 0.35,
-            zIndex: 0,
-            pointerEvents: 'none'
-          }} />
-        )}
-        
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ textAlign: 'center', marginBottom: 30 }}>
-            {event.config?.assets?.logo_url && (
-              <img 
-                src={event.config.assets.logo_url} 
-                alt="Logo del evento" 
-                style={{ maxHeight: 110, maxWidth: '100%', objectFit: 'contain', marginBottom: 15 }} 
-              />
-            )}
-            <h1 style={{ marginBottom: 0 }}>{event.name}</h1>
-          </div>
-
-          <form onSubmit={handleSubmit}>
-          <div className="input-group">
-            <label>Soy...</label>
-            <select 
-              value={formData.type} 
-              onChange={e => setFormData({ ...formData, type: e.target.value })}
-            >
-              <option value="profesor">Profesor/a</option>
-              <option value="alumno">Alumno/a</option>
-              <option value="externo">Externo/a (Amigos, Antiguos alumnos, etc.)</option>
-            </select>
-          </div>
-
-          {formData.type === 'alumno' && (
+        <div className="card">
+        <form onSubmit={handleSubmit}>
+          <div className="grid">
             <div className="input-group">
-              <label>Curso/Grupo</label>
+              <label>Tipo de Participante</label>
               <select 
-                value={formData.course} 
-                onChange={e => setFormData({ ...formData, course: e.target.value })}
+                value={formData.type}
+                onChange={e => setFormData({ ...formData, type: e.target.value })}
               >
-                {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+                <option value="alumno">Alumno/a</option>
+                <option value="profesor">Profesor/a</option>
+                <option value="externo">Externo/a (Familiar, antiguo alumno...)</option>
               </select>
             </div>
-          )}
+
+            {formData.type === 'alumno' && (
+              <div className="input-group">
+                <label>Curso</label>
+                <select 
+                  value={formData.course}
+                  onChange={e => setFormData({ ...formData, course: e.target.value })}
+                >
+                  {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
 
           <div className="input-group">
-            <label>Apellidos y Nombre</label>
+            <label>Nombre y Apellidos {formData.type === 'alumno' ? 'del Alumno/a' : ''}</label>
             <input 
-              type="text" 
               required 
-              placeholder="Ej: García López, Juan"
+              placeholder="Ej: Juan García Pérez"
               value={formData.full_name}
               onChange={e => setFormData({ ...formData, full_name: e.target.value })}
             />
           </div>
 
-          {formData.type === 'externo' && (
-            <div className="grid" style={{ marginBottom: 20 }}>
+          {formData.type !== 'alumno' && (
+            <div className="grid">
               <div className="input-group">
-                <label>Correo Electrónico</label>
+                <label>Email de contacto</label>
                 <input 
                   type="email" 
                   required 
@@ -232,19 +257,33 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
                 Tallaje de Camisetas
               </label>
               <div className="grid" style={{ background: 'rgba(0,0,0,0.2)', padding: 15, borderRadius: 12 }}>
-                {SHIRT_SIZES.map(size => (
-                  <div key={size} className="shirt-input">
-                    <label style={{ fontSize: '0.7rem' }}>{size.toUpperCase()}</label>
-                    <input 
-                      type="number" 
-                      min="0" 
-                      className="input-sm"
-                      style={{ padding: '8px 5px' }}
-                      value={(formData.shirts as any)[size]}
-                      onChange={e => handleShirtChange(size, e.target.value)}
-                    />
-                  </div>
-                ))}
+                {SHIRT_SIZES.map(size => {
+                  const available = stock?.[size]?.available ?? 999;
+                  const isOutOfStock = available <= 0;
+
+                  return (
+                    <div key={size} className={`shirt-input ${isOutOfStock ? 'disabled' : ''}`}>
+                      <label style={{ fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
+                        {SIZE_LABELS[size]}
+                        {stock && (
+                          <span style={{ display: 'block', fontSize: '0.55rem', color: isOutOfStock ? '#ef4444' : '#10b981' }}>
+                            {isOutOfStock ? 'AGOTADA' : `Libres: ${available}`}
+                          </span>
+                        )}
+                      </label>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max={available}
+                        className="input-sm"
+                        style={{ padding: '8px 5px', opacity: isOutOfStock ? 0.3 : 1 }}
+                        value={(formData.shirts as any)[size]}
+                        onChange={e => handleShirtChange(size, e.target.value)}
+                        disabled={isOutOfStock}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

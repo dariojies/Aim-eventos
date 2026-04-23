@@ -10,7 +10,17 @@ const session = require('express-session');
 const { pool, initDB } = require('./db');
 const pgSession = require('connect-pg-simple')(session);
 
-
+const SHIRT_LIMITS = {
+    '4y': 20,
+    '8y': 40,
+    '12y': 34,
+    '16y': 5,
+    's': 40,
+    'm': 40,
+    'l': 25,
+    'xl': 25,
+    'xxl': 10
+};
 
 const SUPER_ADMINS = ['jmmarinborrego@gmail.com', 'dario.jimenez@cevhuertadelacruzesur.es'];
 
@@ -290,6 +300,37 @@ app.get('/api/events', async (req, res) => {
     }
 });
 
+app.get('/api/events/:slug/shirts-stock', async (req, res) => {
+    try {
+        const eventRes = await pool.query('SELECT id FROM race_events WHERE slug = $1', [req.params.slug]);
+        if (eventRes.rows.length === 0) return res.status(404).json({ error: 'Event not found' });
+        const eventId = eventRes.rows[0].id;
+
+        const result = await pool.query(`
+            SELECT 
+                SUM(shirt_4y) as "4y", SUM(shirt_8y) as "8y", SUM(shirt_12y) as "12y", SUM(shirt_16y) as "16y",
+                SUM(shirt_s) as s, SUM(shirt_m) as m, SUM(shirt_l) as l, SUM(shirt_xl) as xl, SUM(shirt_xxl) as xxl
+            FROM race_registrations 
+            WHERE event_id = $1
+        `, [eventId]);
+
+        const consumed = result.rows[0] || {};
+        const stock = {};
+        Object.keys(SHIRT_LIMITS).forEach(size => {
+            const used = parseInt(consumed[size] || '0');
+            stock[size] = {
+                limit: SHIRT_LIMITS[size],
+                consumed: used,
+                available: Math.max(0, SHIRT_LIMITS[size] - used)
+            };
+        });
+
+        res.json(stock);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch stock' });
+    }
+});
+
 app.get('/api/events/:slug', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM race_events WHERE slug = $1', [req.params.slug]);
@@ -333,7 +374,33 @@ app.put('/api/admin/event-config', isAdmin, async (req, res) => {
 app.post('/api/register', async (req, res) => {
     const { event_id, type, course, full_name, total_participants, ampa_members, wants_shirts, shirts, observations, email, phone } = req.body;
     if (!event_id) return res.status(400).json({ error: 'Event ID required' });
+    
     try {
+        // --- STOCK VALIDATION ---
+        if (wants_shirts && shirts) {
+            const currentStockRes = await pool.query(`
+                SELECT 
+                    SUM(shirt_4y) as "4y", SUM(shirt_8y) as "8y", SUM(shirt_12y) as "12y", SUM(shirt_16y) as "16y",
+                    SUM(shirt_s) as s, SUM(shirt_m) as m, SUM(shirt_l) as l, SUM(shirt_xl) as xl, SUM(shirt_xxl) as xxl
+                FROM race_registrations 
+                WHERE event_id = $1
+            `, [event_id]);
+            
+            const usedStock = currentStockRes.rows[0] || {};
+            for (const size of Object.keys(SHIRT_LIMITS)) {
+                const requested = parseInt(shirts[size] || '0');
+                if (requested > 0) {
+                    const alreadyUsed = parseInt(usedStock[size] || '0');
+                    if (alreadyUsed + requested > SHIRT_LIMITS[size]) {
+                        return res.status(400).json({ 
+                            error: `Lo sentimos, no hay stock suficiente para la talla ${size.toUpperCase()}. Quedan ${SHIRT_LIMITS[size] - alreadyUsed} unidades.` 
+                        });
+                    }
+                }
+            }
+        }
+        // -------------------------
+
         const query = `
             INSERT INTO race_registrations (
                 event_id, type, course, full_name, total_participants, ampa_members, wants_shirts,
