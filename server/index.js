@@ -412,7 +412,7 @@ app.post('/api/register', async (req, res) => {
             INSERT INTO race_registrations (
                 event_id, type, course, full_name, total_participants, ampa_members, wants_shirts,
                 shirt_4y, shirt_8y, shirt_12y, shirt_16y, shirt_s, shirt_m, shirt_l, shirt_xl, shirt_xxl, 
-                observations, email, phone, wants_dorsal
+                observations, external_email, external_phone, wants_dorsal
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, 
                 $8, $9, $10, $11, $12, $13, $14, $15, $16,
