@@ -20,6 +20,7 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
   const [loading, setLoading] = useState(false);
   const [inventory, setInventory] = useState<any>(null);
   const [stockError, setStockError] = useState<string[] | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
   const getInitialState = () => ({
     type: 'alumno',
     course: preselectCourse || COURSES[0],
@@ -74,7 +75,7 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
       await axios.post(`${apiBase}/api/register`, sanitizedData);
       setFormData(getInitialState());
       fetchInventory(); // Refresh stock
-      alert('¡Inscripción realizada con éxito!');
+      setShowSuccess(true);
     } catch (err: any) {
       if (err.response?.data?.error === 'STOCK_EXCEEDED') {
         setStockError(err.response.data.sizes);
@@ -325,6 +326,36 @@ export default function RegistrationForm({ apiBase, event, preselectCourse }: Pr
               onClick={() => setStockError(null)}
             >
               Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showSuccess && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          backdropFilter: 'blur(5px)'
+        }}>
+          <div className="card glass" style={{ maxWidth: 400, textAlign: 'center', padding: 30 }}>
+            <div style={{ color: '#10b981', marginBottom: 15 }}>
+              <Shield size={48} />
+            </div>
+            <h2 style={{ color: '#fff' }}>¡Inscripción Éxito!</h2>
+            <p style={{ color: 'rgba(255,255,255,0.8)', lineHeight: 1.5 }}>
+              Tu registro se ha completado correctamente en el sistema.
+            </p>
+            <button 
+              className="btn btn-primary" 
+              style={{ marginTop: 20, width: '100%', background: '#10b981' }}
+              onClick={() => setShowSuccess(false)}
+            >
+              Cerrar
             </button>
           </div>
         </div>
