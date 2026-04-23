@@ -109,12 +109,11 @@ const initDB = async () => {
         END IF;
 
         -- Ensure event_id exists in target tables
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_registrations' AND column_name='event_id') THEN
-          ALTER TABLE race_registrations ADD COLUMN event_id UUID REFERENCES race_events(id);
-        END IF;
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='race_economic_records' AND column_name='event_id') THEN
-          ALTER TABLE race_economic_records ADD COLUMN event_id UUID REFERENCES race_events(id);
-        END IF;
+        ALTER TABLE race_registrations ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES race_events(id);
+        ALTER TABLE race_economic_records ADD COLUMN IF NOT EXISTS event_id UUID REFERENCES race_events(id);
+        
+        -- Ensure wants_dorsal exists
+        ALTER TABLE race_registrations ADD COLUMN IF NOT EXISTS wants_dorsal BOOLEAN DEFAULT true;
 
         -- Link all orphans to this event
         UPDATE race_registrations SET event_id = event_id_var WHERE event_id IS NULL;
