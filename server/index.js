@@ -14,6 +14,18 @@ const pgSession = require('connect-pg-simple')(session);
 
 const SUPER_ADMINS = ['jmmarinborrego@gmail.com', 'dario.jimenez@cevhuertadelacruzesur.es'];
 
+const SHIRT_LIMITS = {
+    '4y': 20,
+    '8y': 40,
+    '12y': 34,
+    '16y': 5,
+    's': 40,
+    'm': 40,
+    'l': 25,
+    'xl': 25,
+    'xxl': 10
+};
+
 // Organization Detection Middleware
 const orgMiddleware = async (req, res, next) => {
     const host = req.headers.host || '';
