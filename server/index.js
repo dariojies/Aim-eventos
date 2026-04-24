@@ -469,24 +469,14 @@ app.post('/api/admin/generate-dorsales', isAdmin, async (req, res) => {
 
         // Sort ONLY the new registrations (Alumnos -> Professors -> Externos)
         newRegistrations.sort((a, b) => {
-            const getOrderValue = (reg) => {
-                if (reg.type === 'profesor') return 'Profesores';
-                if (reg.type === 'externo') return 'Externos';
-                return reg.course || '';
-            };
+            const typeA = a.type === 'profesor' ? 'Profesores' : (a.type === 'externo' ? 'Externos' : a.course);
+            const typeB = b.type === 'profesor' ? 'Profesores' : (b.type === 'externo' ? 'Externos' : b.course);
 
-            const valA = getOrderValue(a);
-            const valB = getOrderValue(b);
-
-            let indexA = COURSE_ORDER.indexOf(valA);
-            let indexB = COURSE_ORDER.indexOf(valB);
-
-            // If not found (e.g. unknown course), put at the end
-            if (indexA === -1) indexA = 999;
-            if (indexB === -1) indexB = 999;
+            const indexA = COURSE_ORDER.indexOf(typeA);
+            const indexB = COURSE_ORDER.indexOf(typeB);
 
             if (indexA !== indexB) return indexA - indexB;
-            return (a.full_name || '').localeCompare(b.full_name || '');
+            return a.full_name.localeCompare(b.full_name);
         });
 
         for (const reg of newRegistrations) {

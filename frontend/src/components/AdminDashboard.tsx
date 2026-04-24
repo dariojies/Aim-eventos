@@ -25,7 +25,7 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
     totalAmpaDebt: 0,
     breakdown: { registrations: 0, shirts: 0, ampa: 0 }
   });
-  const [filters, setFilters] = useState({ type: 'all', course: 'all' });
+  const [filters, setFilters] = useState({ type: 'all', course: 'all', bib: '' });
   const [userRole, setUserRole] = useState<'superadmin' | 'admin' | 'teacher' | null>(null);
   const [assignedCourse, setAssignedCourse] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'registrations' | 'economics' | 'shirts' | 'settings'>('registrations');
@@ -300,6 +300,14 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
   const filteredData = data.filter(reg => {
     if (filters.type !== 'all' && reg.type !== filters.type) return false;
     if (filters.course !== 'all' && reg.course !== filters.course) return false;
+    if (filters.bib && filters.bib !== '') {
+      const search = parseInt(filters.bib);
+      if (!isNaN(search)) {
+        const start = reg.dorsal_start || 0;
+        const end = reg.dorsal_end || start;
+        if (search < start || search > end) return false;
+      }
+    }
     return true;
   });
 
@@ -435,6 +443,16 @@ export default function AdminDashboard({ apiBase, event, onLogout }: Props) {
               <option value="all">Todos los cursos</option>
               {COURSES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
+          </div>
+          <div className="input-group" style={{ marginBottom: 0, width: '200px' }}>
+            <label style={{ fontSize: '0.8rem', opacity: 0.7, marginBottom: 5, display: 'block' }}>Buscar por Dorsal</label>
+            <input 
+              type="number" 
+              placeholder="Ej: 315"
+              value={filters.bib}
+              onChange={e => setFilters({ ...filters, bib: e.target.value })}
+              style={{ padding: '8px 12px', width: '100%' }}
+            />
           </div>
         </div>
       )}
